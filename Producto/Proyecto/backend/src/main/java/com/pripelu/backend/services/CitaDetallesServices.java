@@ -6,8 +6,8 @@ import com.pripelu.backend.entities.CitaDetalles;
 
 public interface CitaDetallesServices {
     
-    CitaServices crear(CitaDetalles citaDetalles);
-    CitaServices obtenerId(Long id);
-    List<CitaServices> obtenerTodos();
-    CitaServices obtenerCitaPorId(Long id);
+    CitaDetalles crear(CitaDetalles citaDetalles);
+    CitaDetalles obtenerId(Long id);
+    List<CitaDetalles> obtenerTodos();
+    CitaDetalles obtenerCitaPorId(Long id);
 }
