@@ -21,9 +21,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/api/pagos")
 public class PagoRestControllers {
     
-    public PagoServices pagoService;
+    private final PagoServices pagoService;
 
-     @PostMapping
+    public PagoRestControllers(PagoServices pagoService) {
+        this.pagoService = pagoService;
+    }
+
+    @PostMapping
     public  ResponseEntity<Pago> crearPago(@RequestBody Pago pago) {
         Pago nuevoPago = pagoService.crear(pago);
         return ResponseEntity.ok(nuevoPago);
@@ -31,7 +35,7 @@ public class PagoRestControllers {
 
     @GetMapping("/{id}")
     public ResponseEntity<Pago> obtenerPagoPorId(@PathVariable Long id) {
-        Pago pago = pagoService.obtenerPagoPorId(id);
+        Pago pago = pagoService.obtenerPorId(id);
         return ResponseEntity.ok(pago);
     }
     

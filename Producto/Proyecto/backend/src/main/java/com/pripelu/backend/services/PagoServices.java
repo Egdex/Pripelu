@@ -7,8 +7,7 @@ import com.pripelu.backend.entities.Pago;
 public interface PagoServices {
     
     Pago crear(Pago pago);
-    Pago obtenerId(Long id);
+    Pago obtenerPorId(Long id);
     List<Pago> obtenerTodos();
     void eliminar(Long id);
-    Pago obtenerPagoPorId(Long id);
 }

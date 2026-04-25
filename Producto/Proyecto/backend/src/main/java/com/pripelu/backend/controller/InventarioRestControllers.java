@@ -21,7 +21,11 @@ import com.pripelu.backend.services.InventarioServices;
 @RequestMapping("/api/inventarios")
 public class InventarioRestControllers {
     
-    public InventarioServices inventarioService;
+    private final InventarioServices inventarioService;
+
+    public InventarioRestControllers(InventarioServices inventarioService) {
+        this.inventarioService = inventarioService;
+    }
 
     @PostMapping
     public  ResponseEntity<Inventario> crearInventario(@RequestBody Inventario inventario) {
@@ -31,7 +35,7 @@ public class InventarioRestControllers {
 
     @GetMapping("/{id}")
     public ResponseEntity<Inventario> obtenerInventarioPorId(@PathVariable Long id) {
-        Inventario inventario = inventarioService.obtenerInventarioPorId(id);
+        Inventario inventario = inventarioService.obtenerPorId(id);
         return ResponseEntity.ok(inventario);
     }
     

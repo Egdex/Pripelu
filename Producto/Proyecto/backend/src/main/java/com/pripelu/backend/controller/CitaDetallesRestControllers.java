@@ -19,7 +19,11 @@ import com.pripelu.backend.services.CitaDetallesServices;
 @RequestMapping("/api/citasDetalles")
 public class CitaDetallesRestControllers {
     
-    public CitaDetallesServices citaDetallesService;
+    private final CitaDetallesServices citaDetallesService;
+
+    public CitaDetallesRestControllers(CitaDetallesServices citaDetallesService) {
+        this.citaDetallesService = citaDetallesService;
+    }
 
     @PostMapping
     public  ResponseEntity<CitaDetalles> crearCitaDeta(@RequestBody CitaDetalles citaDetalles) {
@@ -29,7 +33,7 @@ public class CitaDetallesRestControllers {
 
     @GetMapping("/{id}")
     public ResponseEntity<CitaDetalles> obtenerCitaPorId(@PathVariable Long id) {
-        CitaDetalles citaDeta = citaDetallesService.obtenerCitaPorId(id);
+        CitaDetalles citaDeta = citaDetallesService.obtenerPorId(id);
         return ResponseEntity.ok(citaDeta);
     }
     

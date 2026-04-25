@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pripelu.backend.entities.Servicio;
 import com.pripelu.backend.services.ServicioServices;
+
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +22,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 @RequestMapping("/api/servicios")
 public class ServicioRestControllers {
     
-    public ServicioServices servicioService;
+    private final ServicioServices servicioService;
+
+    public ServicioRestControllers(ServicioServices servicioServices) {
+        this.servicioService = servicioServices;
+    }
 
     @PostMapping
     public  ResponseEntity<Servicio> crearServicio(@RequestBody Servicio servicio) {
@@ -31,7 +36,7 @@ public class ServicioRestControllers {
 
     @GetMapping("/{id}")
     public ResponseEntity<Servicio> obtenerServicioPorId(@PathVariable Long id) {
-        Servicio servicio = servicioService.obtenerServicioPorId(id);
+        Servicio servicio = servicioService.obtenerPorId(id);
         return ResponseEntity.ok(servicio);
     }
     

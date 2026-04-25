@@ -21,7 +21,11 @@ import com.pripelu.backend.services.EmpleadoServices;
 @RequestMapping("/api/empleado")
 public class EmpleadoRestControllers {
 
-    public EmpleadoServices empleadoService;
+    private final EmpleadoServices empleadoService;
+
+    public EmpleadoRestControllers(EmpleadoServices empleadoService) {
+        this.empleadoService = empleadoService;
+    }
 
     @PostMapping
     public  ResponseEntity<Empleado> crearEmpleado(@RequestBody Empleado empleado) {
@@ -31,7 +35,7 @@ public class EmpleadoRestControllers {
 
     @GetMapping("/{id}")
     public ResponseEntity<Empleado> obtenerEmpleadoPorId(@PathVariable Long id) {
-        Empleado empleado = empleadoService.obtenerEmpleadoPorId(id);
+        Empleado empleado = empleadoService.obtenerPorId(id);
         return ResponseEntity.ok(empleado);
     }
     

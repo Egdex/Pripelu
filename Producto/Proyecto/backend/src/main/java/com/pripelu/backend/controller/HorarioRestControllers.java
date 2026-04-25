@@ -21,7 +21,11 @@ import com.pripelu.backend.services.HorarioServices;
 @RequestMapping("/api/horarios")
 public class HorarioRestControllers {
 
-    public HorarioServices horarioService;
+    private final HorarioServices horarioService;
+
+    public HorarioRestControllers(HorarioServices horarioService) {
+        this.horarioService = horarioService;
+    }
 
     @PostMapping
     public  ResponseEntity<Horario> crearHorario(@RequestBody Horario horario) {
@@ -31,7 +35,7 @@ public class HorarioRestControllers {
 
     @GetMapping("/{id}")
     public ResponseEntity<Horario> obtenerHorarioPorId(@PathVariable Long id) {
-        Horario horario = horarioService.obtenerHorarioPorId(id);
+        Horario horario = horarioService.obtenerPorId(id);
         return ResponseEntity.ok(horario);
     }
     

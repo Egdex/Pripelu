@@ -21,7 +21,11 @@ import com.pripelu.backend.services.InsumosUtiServices;
 @RequestMapping("/api/insumosuti")
 public class InsumosUtiRestControllers {
     
-    public InsumosUtiServices insumosUtiService;
+    private final InsumosUtiServices insumosUtiService;
+
+    public InsumosUtiRestControllers(InsumosUtiServices insumosUtiService) {
+        this.insumosUtiService = insumosUtiService;
+    }
 
     @PostMapping
     public  ResponseEntity<InsumosUtilizados> crearInsumosUti(@RequestBody InsumosUtilizados insumosUti) {
@@ -31,7 +35,7 @@ public class InsumosUtiRestControllers {
 
     @GetMapping("/{id}")
     public ResponseEntity<InsumosUtilizados> obtenerInsumosUtiPorId(@PathVariable Long id) {
-        InsumosUtilizados insumosUti = insumosUtiService.obtenerInsumoPorId(id);
+        InsumosUtilizados insumosUti = insumosUtiService.obtenerPorId(id);
         return ResponseEntity.ok(insumosUti);
     }
     

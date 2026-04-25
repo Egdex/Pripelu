@@ -2,7 +2,7 @@ package com.pripelu.backend.controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,18 +22,22 @@ import org.springframework.web.bind.annotation.PathVariable;
 @RequestMapping("/api/usuarios")
 public class UsuarioRestControllers {
     
-    @Autowired
-    private UsuarioServices usuarioService;
 
+    private final UsuarioServices usuarioService;
+
+    public UsuarioRestControllers(UsuarioServices usuarioServices) {
+        this.usuarioService = usuarioServices;
+    }
+    
     @PostMapping
     public ResponseEntity<Usuario> crearUsuario(@RequestBody Usuario usuario) {
         Usuario nuevoUsuario = usuarioService.crear(usuario);
-        return ResponseEntity.ok(nuevoUsuario);
+        return new ResponseEntity<>(nuevoUsuario, HttpStatus.CREATED);
     }
     
     @GetMapping("/{id}")
     public ResponseEntity<Usuario> obtenerUsuarioPorId(@PathVariable long id) {
-        Usuario usuario = usuarioService.obtenerId(id);
+        Usuario usuario = usuarioService.obtenerPorId(id);
         return ResponseEntity.ok(usuario);
     }
     

@@ -2,6 +2,8 @@ package com.pripelu.backend.entities;
 
 import java.time.LocalTime;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -24,6 +26,7 @@ public class Horario {
 
     @ManyToOne
     @JoinColumn(name = "Id_empleado", nullable = false)
+    @JsonBackReference
     private Empleado empleados;
 
     @Column(name = "Dia_semana", nullable = false)

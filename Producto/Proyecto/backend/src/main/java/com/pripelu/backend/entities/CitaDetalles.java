@@ -2,6 +2,8 @@ package com.pripelu.backend.entities;
 
 import java.math.BigDecimal;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -24,6 +26,7 @@ public class CitaDetalles {
 
     @ManyToOne
     @JoinColumn(name = "id_cita", nullable = false)
+    @JsonBackReference
     private Cita cita;
 
     @ManyToOne
