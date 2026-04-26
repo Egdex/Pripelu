@@ -53,7 +53,7 @@ public class InventarioRestControllers {
 
     @PutMapping("/{id}")
     public ResponseEntity<Inventario> actualizarInventario(@PathVariable Long id, @RequestBody Inventario inventarioActualizado) {
-        Inventario inventario = inventarioService.actulizar(id, inventarioActualizado);
+        Inventario inventario = inventarioService.actualizar(id, inventarioActualizado);
         return ResponseEntity.ok(inventario);
     }
 }

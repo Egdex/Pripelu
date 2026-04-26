@@ -10,6 +10,6 @@ public interface ServicioServices {
     Servicio obtenerPorId(Long id);
     List<Servicio> obtenerTodos();
     void eliminar(Long id);
-    Servicio actulizar(Long id, Servicio servicioActualizado);
+    Servicio actualizar(Long id, Servicio servicioActualizado);
 
 }

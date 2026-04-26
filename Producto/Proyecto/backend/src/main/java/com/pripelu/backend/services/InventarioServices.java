@@ -10,5 +10,5 @@ public interface InventarioServices {
     Inventario obtenerPorId(Long id);
     List<Inventario> obtenerTodos();
     void eliminar(Long id);
-    Inventario actulizar(Long id, Inventario inventarioActualizado);
+    Inventario actualizar(Long id, Inventario inventarioActualizado);
 }

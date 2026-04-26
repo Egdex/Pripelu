@@ -54,7 +54,7 @@ public class ServicioRestControllers {
 
     @PutMapping("/{id}")
     public ResponseEntity<Servicio> actualizarServicio(@PathVariable Long id, @RequestBody Servicio servicioActualizado) {
-        Servicio servicio = servicioService.actulizar(id, servicioActualizado);
+        Servicio servicio = servicioService.actualizar(id, servicioActualizado);
         return ResponseEntity.ok(servicio);
     }
 
