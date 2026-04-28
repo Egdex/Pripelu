@@ -20,9 +20,9 @@ public class Pago {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_pago")
-    private Integer idPago; // Usamos Integer porque la pauta pide "int"
+    private Integer idPago;
 
-    @OneToOne // Una cita normalmente tiene un solo pago final
+    @OneToOne
     @JoinColumn(name = "id_cita", nullable = false)
     private Cita cita;
 

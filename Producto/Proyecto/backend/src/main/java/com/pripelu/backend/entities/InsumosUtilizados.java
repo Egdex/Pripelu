@@ -2,6 +2,8 @@ package com.pripelu.backend.entities;
 
 import java.math.BigDecimal;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -27,6 +29,7 @@ public class InsumosUtilizados {
 
     @ManyToOne
     @JoinColumn(name = "id_servicio", nullable = false)
+    @JsonBackReference
     private Servicio servicio;
 
     @Column(name = "cantidad", precision = 10, scale = 2, nullable = false)
