@@ -11,10 +11,10 @@ import com.pripelu.backend.repositories.CitaRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class CitaServiceImpl implements CitaService {
+public class CitaServiceImpl implements CitaServices {
 
     @Autowired
-    private CitaRepository citaRepo
+    private CitaRepository citaRepo;
 
     @Override
     @Transactional(readOnly = true)

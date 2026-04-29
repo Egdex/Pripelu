@@ -24,6 +24,12 @@ public class InsumosUtiServiceImpl implements InsumosUtiServices {
 
     @Override
     @Transactional(readOnly = true)
+    public List<InsumosUtilizados> obtenerTodos() {
+        return (List<InsumosUtilizados>) insumosUtiRepo.findAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InsumosUtilizados obtenerPorId(Long id) {
         return insumosUtiRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Registro de insumo no encontrado con ID: " + id));
@@ -53,5 +59,4 @@ public class InsumosUtiServiceImpl implements InsumosUtiServices {
         return insumosUtiRepo.findByServicioId(servicioId);
         // Esto permitira ver todos los insumos asociados a un servicio específico, lo que puede ser util para le font
     }
-
 }

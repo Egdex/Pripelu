@@ -1,6 +1,7 @@
 package com.pripelu.backend.services;
 
 import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,7 +39,7 @@ public class CitaDetallesServiceImpl implements CitaDetallesServices {
     
     // Método extra útil para el historial
     @Transactional(readOnly = true)
-    public List<CitaDetalles> obtenerPorCita(Long Id) {
-        return detallesRepo.findByCitaId(Long Id);
+    public List<CitaDetalles> obtenerPorCita(Long citaId) {
+        return detallesRepo.findByCitaId(citaId);
     }
 }
