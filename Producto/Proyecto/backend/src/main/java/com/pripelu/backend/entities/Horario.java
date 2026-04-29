@@ -27,7 +27,7 @@ public class Horario {
     @ManyToOne
     @JoinColumn(name = "Id_empleado", nullable = false)
     @JsonBackReference
-    private Empleado empleados;
+    private Empleado empleado;
 
     @Column(name = "Dia_semana", nullable = false)
     private Integer diaSemana;
