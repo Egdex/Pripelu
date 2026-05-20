@@ -34,6 +34,17 @@ public class UsuarioRestControllers {
         Usuario nuevoUsuario = usuarioService.crear(usuario);
         return new ResponseEntity<>(nuevoUsuario, HttpStatus.CREATED);
     }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    try {
+        Usuario usuario = usuarioService.login(loginRequest.getEmail(), loginRequest.getContrasena());
+        return ResponseEntity.ok(usuario);
+    } catch (RuntimeException e) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+    }
+}
+    
     
     @GetMapping("/{id}")
     public ResponseEntity<Usuario> obtenerUsuarioPorId(@PathVariable long id) {
@@ -59,4 +70,14 @@ public class UsuarioRestControllers {
         return ResponseEntity.ok(usuario);
     }
     
+    class LoginRequest {
+    private String email;
+    private String contrasena;
+    
+    // Getters y Setters
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getContrasena() { return contrasena; }
+    public void setContrasena(String contrasena) { this.contrasena = contrasena; }
+}
 }

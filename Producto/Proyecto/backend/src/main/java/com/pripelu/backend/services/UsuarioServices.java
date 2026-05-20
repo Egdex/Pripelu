@@ -7,6 +7,7 @@ import com.pripelu.backend.entities.Usuario;
 public interface UsuarioServices {
 
     Usuario crear(Usuario usuario);
+    Usuario login(String email, String contrasena);
     Usuario obtenerPorId(Long id);
     List<Usuario> obtenerTodos();
     void eliminar(Long id);
