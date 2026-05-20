@@ -22,11 +22,21 @@ public class UsuarioServiceImpl implements UsuarioServices {
         if(usuarioRepo.findByEmail(usuario.getEmail()).isPresent()) {
             throw new RuntimeException("El email ya está registrado");
         }
-        
-        // Para más adelante implementar la encriptacion de la contraseña
-        // usuario.setContrasena(passwordEncoder.encode(usuario.getContrasena()));
+        //usuario.setContrasena(passwordEncoder.encode(usuario.getContrasena()));
         
         return usuarioRepo.save(usuario);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Usuario login(String email, String contrasena) {
+        Usuario usuario = usuarioRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Email o contraseña incorrectos"));
+                
+        if (!usuario.getContrasena().equals(contrasena)) {
+            throw new RuntimeException("Email o contraseña incorrectos");
+        }
+        return usuario;
     }
 
     @Override
