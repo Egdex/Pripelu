@@ -6,32 +6,44 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  
-    const handleLogin = (e) => {
-        e.preventDefault();
-        localStorage.clear();
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    localStorage.clear();
 
-        // 1. LOGIN ADMINISTRADOR (RF02 - ERS)
-        if (email === 'admin@pripelu.cl' && password === '123456') {
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('userRole', 'admin');
-          localStorage.setItem('userName', 'Pri');
+    try {
+      const respuesta = await fetch('http://localhost:8080/api/usuarios/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: email,
+          contrasena: password
+        })
+      });
+
+      if (respuesta.ok) {
+        const usuarioLogeado = await respuesta.json();
+        localStorage.setItem('isAuthenticated', 'true');
+        localStorage.setItem('userRole', usuarioLogeado.rol?.toLowerCase() || 'cliente');
+        localStorage.setItem('userName', usuarioLogeado.nombre || 'Usuario');
+
+        if (usuarioLogeado.rol?.toLowerCase() === 'admin') {
           navigate('/admin');
-        } 
-        // 2. LOGIN EMPLEADO / STAFF (RF09 - ERS)
-        else if (email === 'ana@pripelu.cl' || email === 'empleado@pripelu.cl') {
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('userRole', 'empleado');
-          localStorage.setItem('userName', 'Ana'); 
+        } else if (usuarioLogeado.rol?.toLowerCase() === 'empleado') {
           navigate('/mis-citas');
-        } 
-        // 3. LOGIN CLIENTE (RF01 - ERS)
-        else {
-          localStorage.setItem('isAuthenticated', 'true');
-          localStorage.setItem('userRole', 'cliente');
+        } else {
           navigate('/');
         }
-      };
+      } else {
+        alert('Correo o contraseña incorrectos');
+      }
+    } catch (error) {
+      console.error("Falla en la conexión:", error);
+      alert('Error de conexión con el servidor. ¿Está encendido el Backend?');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fdf2f8] flex items-center justify-center p-4">
       <div className="bg-white p-10 rounded-[3rem] shadow-2xl w-full max-w-md border border-pink-100">
