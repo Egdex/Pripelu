@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Play, MapPin, Phone, Clock, User, LogOut, Settings, Calendar, ClipboardList, Scissors } from 'lucide-react';
+import { Play, MapPin, Phone, Clock, LogOut, Settings, Calendar, ClipboardList, Scissors } from 'lucide-react';
 import { floresData } from '../data'; 
 import { TarjetaEquipo } from '../components/TarjetasEquipo';
 import { FloatingFlower } from '../components/Flores';
@@ -58,20 +58,20 @@ export default function LandingPage({ onStartBooking }) {
         <FloatingFlower key={f.id} {...f} />
       ))}
 
-{/* --- NAVEGACIÓN FIXED EFECTO CRISTAL --- */}
-      <nav className="fixed top-0 left-0 w-full z-[100] flex justify-between items-center px-8 md:px-12 py-4 bg-white/70 backdrop-blur-md shadow-sm border-b border-pink-100">
+      {/* --- NAVEGACIÓN FIXED EFECTO CRISTAL (Limpio) --- */}
+      <nav className="nav-cristal">
          <div className="flex items-center gap-3">
           <img 
             src="/logo-pripelu-gold-mini.png" 
             alt="PriPelu Logo" 
-            className="h-10 w-auto hover:scale-105 transition-transform cursor-pointer"
+            className="nav-logo"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
           />
         </div>
         
-        <div className="hidden md:flex gap-10 text-gray-600 font-bold text-sm uppercase tracking-wider">
+        <div className="nav-links-container">
           {['Inicio', 'Servicios', 'Equipo', 'Galería'].map((item) => (
-            <a key={item} href={`#${item.toLowerCase()}`} className="hover:text-[#f171ab] transition-colors">
+            <a key={item} href={`#${item.toLowerCase()}`} className="nav-link">
               {item}
             </a>
           ))}
@@ -82,13 +82,13 @@ export default function LandingPage({ onStartBooking }) {
             <div className="relative">
               <button 
                 onClick={() => setShowDropdown(!showDropdown)}
-                className="w-10 h-10 rounded-full bg-[#f171ab] text-white font-bold flex items-center justify-center border-2 border-white shadow-lg hover:scale-105 transition-all"
+                className="btn-avatar"
               >
                 {userRole === 'admin' ? 'A' : userRole === 'empleado' ? 'E' : 'U'}
               </button>
 
               {showDropdown && (
-                <div className="absolute right-0 mt-3 w-56 bg-white rounded-3xl shadow-2xl border border-pink-50 overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="dropdown-menu">
                   <div className="p-4 border-b border-gray-50 bg-pink-50/20 text-center">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Mi Cuenta</p>
                     <p className="text-[#b02a6b] text-xs font-bold italic">
@@ -98,23 +98,23 @@ export default function LandingPage({ onStartBooking }) {
                     </p>
                   </div>
                   
-                  <Link to="/mis-citas" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-5 py-4 text-sm text-gray-600 hover:bg-pink-50 transition-colors">
+                  <Link to="/mis-citas" onClick={() => setShowDropdown(false)} className="dropdown-item">
                     <Calendar size={16} /> Mis Citas
                   </Link>
 
                   {userRole === 'admin' && (
-                    <Link to="/admin" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-5 py-4 text-sm text-[#b02a6b] font-bold hover:bg-pink-50 transition-colors border-t border-gray-50">
+                    <Link to="/admin" onClick={() => setShowDropdown(false)} className="dropdown-item text-[#b02a6b] font-bold">
                       <Settings size={16} /> Panel de Gestión
                     </Link>
                   )}
 
                   {userRole === 'empleado' && (
-                    <Link to="/mis-citas" onClick={() => setShowDropdown(false)} className="flex items-center gap-3 px-5 py-4 text-sm text-blue-600 font-bold hover:bg-blue-50 transition-colors border-t border-gray-50">
+                    <Link to="/mis-citas" onClick={() => setShowDropdown(false)} className="dropdown-item text-blue-600 font-bold">
                       <ClipboardList size={16} /> Ver Mi Agenda
                     </Link>
                   )}
 
-                  <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-4 text-sm text-red-500 hover:bg-red-50 transition-colors border-t border-gray-50">
+                  <button onClick={handleLogout} className="dropdown-item w-full text-red-500">
                     <LogOut size={16} /> Cerrar Sesión
                   </button>
                 </div>
@@ -155,7 +155,7 @@ export default function LandingPage({ onStartBooking }) {
         </div>
       </header>
 
-      {/* --- SECCIÓN SERVICIOS (6 Servicios) --- */}
+      {/* --- SECCIÓN SERVICIOS --- */}
       <section id="servicios" className="section-container bg-white rounded-t-[4rem] shadow-2xl">
         <div className="section-title-wrapper">
           <p className="section-subtitle">Nuestros Servicios</p>
@@ -183,7 +183,7 @@ export default function LandingPage({ onStartBooking }) {
         )}
       </section>
 
-      {/* --- SECCIÓN EQUIPO (Empleados Reales de MySQL) --- */}
+      {/* --- SECCIÓN EQUIPO --- */}
       <section id="equipo" className="section-container bg-[#fdf2f8]">
         <div className="section-title-wrapper">
           <p className="section-subtitle">Profesionales</p>
@@ -208,7 +208,11 @@ export default function LandingPage({ onStartBooking }) {
           <p className="section-subtitle">Resultados Reales</p>
           <h2 className="section-title">Transformaciones Mágicas</h2>
         </div>
-        <Comparador antes="/tu-foto-antes.jpg" despues="/tu-foto-despues.jpg" />
+        
+        {/* AGREGAMOS ESTE DIV ENVOLVEDOR LIMPIO */}
+        <div className="comparador-seccion-wrapper">
+          <Comparador antes="/tu-foto-antes.jpg" despues="/tu-foto-despues.jpg" />
+        </div>
       </section>
 
       {/* CONTACTO */}
@@ -233,7 +237,7 @@ export default function LandingPage({ onStartBooking }) {
       </section>
 
       <footer className="bg-white py-12 text-center text-gray-400 text-xs border-t border-pink-50">
-        <p>© 2026 PriPelu Studio. Maipú, Santiago. Diseñado con ✨</p>
+        <p>© 2026 PriPelu Studio. Maipú, Santiago.</p>
       </footer>
     </div>
   );

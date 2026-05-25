@@ -1,34 +1,31 @@
 import React from 'react';
-import { describe, test, expect } from 'vitest'; // <-- ESTA ES LA LÍNEA MÁGICA QUE FALTABA
-import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom/vitest';
-import BookingForm from "../Pages/BookingForm.jsx";
+import { describe, test, expect, afterEach } from 'vitest'; 
+// AQUI: Agregamos cleanup a la importación
+import { render, screen, cleanup } from '@testing-library/react'; 
+import '@testing-library/jest-dom/vitest'; 
 
+import BookingForm from "../Pages/BookingForm.jsx"; 
+
+// Esto limpia el "fantasma" del componente anterior para que no se dupliquen
 afterEach(() => {
   cleanup();
 });
 
-// Describimos qué vamos a probar
 describe('Pruebas en el componente BookingForm', () => {
 
-  test('El botón de continuar al pago debe estar deshabilitado al iniciar', () => {
-    // 1. Renderizamos (dibujamos) el componente en una pantalla virtual
+  test('Debe mostrar el mensaje de carga inicial en vez del formulario', () => {
     render(<BookingForm />);
-
-    // 2. Buscamos el botón en la pantalla usando su texto
-    const botonContinuar = screen.getByRole('button', { name: /Continuar al Pago/i });
-
-    // 3. Afirmamos lo que esperamos que pase (que esté bloqueado)
-    expect(botonContinuar).toBeDisabled();
+    
+    // Al abrir el modal, lo primero que sale es el texto de "Conectando..."
+    const mensajeCarga = screen.getByText(/Conectando con el sistema/i);
+    expect(mensajeCarga).toBeInTheDocument();
   });
 
-  test('El título del formulario debe cargarse correctamente', () => {
+  test('El título del formulario debe existir en el documento', () => {
     render(<BookingForm />);
     
-    // Buscamos que el título principal exista en la pantalla
+    // El título principal siempre está visible arriba
     const titulo = screen.getByText(/Tu Nueva Imagen te Espera/i);
-    
-    // Afirmamos que está en el documento
     expect(titulo).toBeInTheDocument();
   });
 

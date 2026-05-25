@@ -25,35 +25,28 @@ export const TarjetaEquipo = ({ persona }) => {
         style={{ transformStyle: "preserve-3d" }}
       >
         {/* CARA FRONTAL */}
-        <div 
-          className="absolute inset-0 w-full h-full bg-white/40 backdrop-blur-md p-8 rounded-[3rem] border border-white/50 text-center shadow-xl flex flex-col justify-center items-center" 
-          style={{ backfaceVisibility: "hidden" }}
-        >
+        <div className="card-flip-front" style={{ backfaceVisibility: "hidden" }}>
           <div className="relative w-32 h-32 mb-6">
-            {/* Le puse un color rosado por defecto al resplandor */}
             <div className="absolute inset-0 bg-[#f171ab] rounded-full blur-2xl opacity-40"></div>
             <div className="relative w-full h-full bg-gray-200 rounded-full border-4 border-white overflow-hidden shadow-lg flex items-center justify-center text-4xl">
               👤
             </div>
           </div>
           <h3 className="text-2xl font-bold text-gray-800">{nombreCompleto}</h3>
-          <p className="text-[#f171ab] font-bold text-xs mt-2 uppercase tracking-widest">
+          {/* Aquí reutilizamos tu clase section-subtitle */}
+          <p className="section-subtitle mt-2">
             {especialidad}
           </p>
         </div>
 
         {/* CARA TRASERA */}
-        <div 
-          className="absolute inset-0 w-full h-full bg-[#f171ab] p-8 rounded-[3rem] text-center shadow-xl flex flex-col justify-center items-center" 
-          style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}
-        >
+        <div className="card-flip-back" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
           <p className="text-white italic text-lg mb-6 leading-relaxed">
             {frase}
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {/* Usamos nuestra lista segura en vez de persona.tags */}
             {tagsFallback.map(tag => (
-              <span key={tag} className="text-[10px] uppercase font-bold px-3 py-1 bg-white/20 text-white rounded-full shadow-sm">
+              <span key={tag} className="tag-equipo">
                 {tag}
               </span>
             ))}
