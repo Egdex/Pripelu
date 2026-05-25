@@ -23,17 +23,39 @@ export default function TodasLasCitas() {
     fetchCitas();
   }, []);
 
-  // --- FUNCIÓN ACTUALIZADA: LA DIETA INTELIGENTE ---
+  // --- BOTÓN DEBUG: NUCLEAR TODAS LAS CITAS ---
+  const handleBorrarTodoDebug = async () => {
+    const confirmacion = window.confirm("⚠️ ALERTA: ¿Estás seguro que quieres BORRAR TODAS las citas de la base de datos?");
+    if (!confirmacion) return;
+
+    try {
+      if (citas.length === 0) {
+        return alert("La base de datos ya está vacía, no hay nada que borrar. 🧹");
+      }
+
+      for (const cita of citas) {
+        const idCita = cita.id || cita.id_cita;
+        await fetch(`http://localhost:8080/api/citas/${idCita}`, {
+          method: 'DELETE'
+        });
+      }
+
+      alert("¡Base de datos limpia exitosamente! 🚀");
+      window.location.reload(); 
+      
+    } catch (error) {
+      console.error("Error al borrar las citas:", error);
+      alert("Explotó algo intentando borrar las citas. Revisa la consola.");
+    }
+  };
+
   const actualizarEstado = async (id, nuevoEstado) => {
-    // 1. Buscamos la cita original
     const citaActual = citas.find(c => c.id === id);
     if (!citaActual) return;
 
-    // 2. Rescatamos los IDs de forma segura
     const idUsuario = citaActual.usuario?.id || citaActual.usuario?.id_usuario;
     const idEmpleado = citaActual.empleado?.id || citaActual.empleado?.id_empleado;
 
-    // 3. Armamos el paquete pequeñito solo con lo que Java necesita para el PUT
     const paqueteLimpio = {
       fechaHora: citaActual.fechaHora,
       estado: nuevoEstado,
@@ -49,7 +71,6 @@ export default function TodasLasCitas() {
       });
 
       if (respuesta.ok) {
-        // Actualizamos la pantalla al instante si Java dice "OK"
         setCitas(citas.map(c => c.id === id ? { ...c, estado: nuevoEstado } : c));
       } else {
         alert("Java rechazó la actualización. Revisa la consola de Spring Boot.");
@@ -71,20 +92,39 @@ export default function TodasLasCitas() {
   return (
     <div className="min-h-screen bg-[#fdf2f8] p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <Link to="/admin" className="flex items-center gap-2 text-[#f171ab] font-bold hover:underline">
-            <ArrowLeft size={20} /> Volver al Panel
-          </Link>
-          <h1 className="text-3xl font-serif text-[#b02a6b] italic font-bold">Gestión Global de Reservas</h1>
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+          <div className="flex items-center gap-4">
+            <Link to="/admin" className="flex items-center gap-2 text-[#f171ab] font-bold hover:underline">
+              <ArrowLeft size={20} /> Volver
+            </Link>
+            <h1 className="text-3xl font-serif text-[#b02a6b] italic font-bold">Gestión de Reservas</h1>
+          </div>
+          
+          {/* BOTÓN DEBUG AQUÍ */}
+          <button 
+            onClick={handleBorrarTodoDebug} 
+            className="bg-red-600 hover:bg-red-800 text-white font-bold py-2 px-4 rounded-xl text-xs shadow-lg border-2 border-red-900 transition-colors"
+          >
+            🗑️ DEBUG: Borrar TODAS las citas
+          </button>
         </div>
 
         {cargando ? (
           <p className="text-center text-pink-500 font-bold py-20">Conectando con el servidor...</p>
+        ) : citas.length === 0 ? (
+           <p className="text-center text-gray-400 font-bold py-20">No hay citas registradas en el sistema.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {citas.map((cita) => (
-              <div key={cita.id} className="bg-white rounded-[2rem] shadow-xl border border-pink-50 overflow-hidden hover:scale-[1.02] transition-transform flex flex-col">
+              <div key={cita.id} className="relative bg-white rounded-[2rem] shadow-xl border border-pink-50 overflow-hidden hover:scale-[1.02] transition-transform flex flex-col">
                 
+                {/* ETIQUETA VISUAL DE PAGADA */}
+                {cita.estado?.toLowerCase() === 'finalizado' && (
+                  <span className="absolute -top-1 -right-8 bg-green-500 text-white text-[10px] font-black px-10 py-1 shadow-md transform rotate-45 z-10">
+                    PAGADA
+                  </span>
+                )}
+
                 <div className={`px-6 py-2 text-center text-xs font-black uppercase tracking-widest border-b ${obtenerEstiloEstado(cita.estado)}`}>
                   {cita.estado || 'Sin Estado'}
                 </div>
@@ -129,7 +169,8 @@ export default function TodasLasCitas() {
                   </div>
                 </div>
 
-                {cita.estado?.toLowerCase() === 'pendiente' && (
+                {/* BOTONERA: Muestra botones si está pendiente, o texto de éxito si ya se finalizó */}
+                {cita.estado?.toLowerCase() === 'pendiente' ? (
                   <div className="flex border-t border-gray-100">
                     <button 
                       onClick={() => actualizarEstado(cita.id, 'Cancelado')}
@@ -140,12 +181,16 @@ export default function TodasLasCitas() {
                     <div className="w-[1px] bg-gray-100"></div>
                     <button 
                       onClick={() => actualizarEstado(cita.id, 'Finalizado')}
-                      className="flex-1 flex justify-center items-center gap-2 py-4 text-sm font-bold text-green-500 hover:bg-green-50 transition-colors"
+                      className="flex-1 flex justify-center items-center gap-2 py-4 text-sm font-bold text-[#f171ab] hover:bg-pink-50 transition-colors"
                     >
-                      <CheckCircle size={18} /> Finalizar
+                      <CheckCircle size={18} /> Finalizar y Cobrar
                     </button>
                   </div>
-                )}
+                ) : cita.estado?.toLowerCase() === 'finalizado' ? (
+                   <div className="bg-green-50 py-3 text-center text-green-600 font-bold text-sm border-t border-green-100">
+                     ✅ Cita completada y cobrada
+                   </div>
+                ) : null}
 
               </div>
             ))}

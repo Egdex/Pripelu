@@ -8,7 +8,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
   const [horasDisponibles, setHorasDisponibles] = useState([]);
   const [cargandoDatos, setCargandoDatos] = useState(true);
   
-  // NUEVO: Control de pasos (1: Formulario, 2: Pago, 3: Éxito)
+  // Control de pasos (1: Formulario, 2: Pago, 3: Éxito)
   const [paso, setPaso] = useState(1);
   const [procesandoPago, setProcesandoPago] = useState(false);
   const [errorBackend, setErrorBackend] = useState('');
@@ -146,58 +146,82 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     setPaso(2);
   };
 
-  // PASO 2 al 3: Ejecutamos el Fetch simulando la tarjeta
+  // --- PASO 2 al 3: EJECUTAR RESERVA Y PAGO AL BACKEND ---
   const handleEjecutarPago = async (e) => {
     e.preventDefault();
     setProcesandoPago(true);
     setErrorBackend('');
 
-    setTimeout(async () => {
-      const userId = localStorage.getItem('userId') || 2;
-      const idUsuarioLimpio = parseInt(userId); 
-      const fechaHoraFormateada = `${formData.fecha}T${formData.hora}:00`;
+    const userId = localStorage.getItem('userId') || 2;
+    const idUsuarioLimpio = parseInt(userId); 
+    const fechaHoraFormateada = `${formData.fecha}T${formData.hora}:00`;
 
-      const nuevaReserva = {
-        fechaHora: fechaHoraFormateada,
-        estado: "Pendiente",
-        notas: formData.notas || "Sin notas",
-        valorTotal: precioFinal,
-        duracionTotal: duracionFinal,
-        usuario: { id: idUsuarioLimpio }, 
-        empleado: { id: parseInt(formData.empleadoId) }, 
-        detalles: [{
-            precioCita: precioFinal,
-            servicio: { id: parseInt(formData.servicioId) }
-        }]
+    // 1. Objeto de la Reserva
+    const nuevaReserva = {
+      fechaHora: fechaHoraFormateada,
+      estado: "Pendiente",
+      notas: formData.notas || "Reserva con Abono Online",
+      valorTotal: precioFinal,
+      duracionTotal: duracionFinal,
+      usuario: { id: idUsuarioLimpio }, 
+      empleado: { id: parseInt(formData.empleadoId) }, 
+      detalles: [{
+          precioCita: precioFinal,
+          servicio: { id: parseInt(formData.servicioId) }
+      }]
+    };
+
+    try {
+      // 2. Primero guardamos la CITA
+      const respuestaCita = await fetch('http://localhost:8080/api/citas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevaReserva)
+      });
+
+      if (!respuestaCita.ok) throw new Error("Fallo al crear la cita");
+
+      // 3. Atrapamos la cita creada (para sacarle el ID)
+      const citaCreada = await respuestaCita.json();
+      const idDeLaCitaNueva = citaCreada.id || citaCreada.id_cita;
+      
+
+      // 4. Creamos el objeto PAGO en base a la clase del Eugenio
+      const nuevoPago = {
+        cita: { id: idDeLaCitaNueva }, // Aquí hacemos la relación @ManyToOne
+        monto: montoAbono,             // Guardamos los $2.000 del abono
+        fechaPago: new Date().toISOString(), // Fecha actual automática
+        metodoPago: "Tarjeta",
+        idTransaccionExacta: `TRX-${Math.floor(Math.random() * 1000000)}`, // Simulamos código bancario
+        estadoPago: "Aprobado",
+        tipoPago: "Abono"              // Definimos que es la reserva, no el saldo final
       };
 
-      try {
-        const respuesta = await fetch('http://localhost:8080/api/citas', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(nuevaReserva)
-        });
+      // 5. Enviamos el PAGO al backend
+      const respuestaPago = await fetch('http://localhost:8080/api/pagos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevoPago)
+      });
 
-        if (respuesta.ok) {
-          setPaso(3); // PANTALLA DE ÉXITO
-          setTimeout(() => {
-            onBookingComplete(formData);
-          }, 2500); // Se cierra solo después de 2.5 seg
-        } else {
-          setErrorBackend("Hubo un problema al guardar la reserva en la base de datos.");
-          setProcesandoPago(false);
-        }
-      } catch (error) {
-        setErrorBackend("Error de conexión con el servidor.");
-        setProcesandoPago(false);
-      }
-    }, 2500);
+      if (!respuestaPago.ok) throw new Error("Fallo al registrar el pago");
+
+      // 6. ¡Todo salió perfecto! Pasamos a la pantalla de éxito
+      setPaso(3);
+      setTimeout(() => {
+        onBookingComplete(formData);
+      }, 2500); 
+
+    } catch (error) {
+      console.error(error);
+      setErrorBackend("Hubo un problema al procesar la reserva o el pago. Intenta de nuevo.");
+      setProcesandoPago(false);
+    }
   };
 
   return (
     <div className="relative bg-[#fff5f8] p-8 md:p-12 rounded-[3rem] shadow-2xl max-w-2xl w-full border border-pink-100 overflow-hidden min-h-[500px] flex flex-col justify-center">
       
-      {/* Botón Cerrar (Solo visible si no está cargando ni en la pantalla de éxito) */}
       {paso !== 3 && !procesandoPago && (
         <button onClick={onClose} className="absolute top-6 right-6 text-[#b02a6b] hover:scale-110 transition-transform font-bold text-2xl z-10">✕</button>
       )}
@@ -247,7 +271,19 @@ export default function BookingForm({ onBookingComplete, onClose }) {
                   {horasDisponibles.map(h => (<option key={h} value={h}>{h}</option>))}
                 </select>
               </div>
-
+              {/* --- BOLETA PREVIA (Aparece solo si ya eligió servicio) --- */}
+              {formData.servicioId && (
+                <div className="md:col-span-2 bg-pink-50 p-5 rounded-2xl flex justify-between items-center border border-pink-200 shadow-inner mt-2">
+                  <div>
+                    <p className="text-[#b02a6b] font-bold text-lg">Total del servicio: ${precioFinal}</p> 
+                    <p className="text-sm text-gray-500 italic">Saldo a pagar en el local: ${saldoPendiente}</p>      
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-[#f171ab] uppercase font-bold tracking-widest">Abono Requerido Hoy</p>
+                    <p className="text-3xl font-bold text-[#b02a6b]">${montoAbono}</p>
+                  </div>
+                </div>
+              )}
               <button type="submit" className="md:col-span-2 bg-[#f171ab] text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:bg-[#d85a94] transition-all mt-4" disabled={horasDisponibles.length === 0 || !formData.servicioId}>
                 Continuar al Pago
               </button>
@@ -284,7 +320,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
             {errorBackend && <p className="text-red-500 text-xs text-center font-bold mt-2">{errorBackend}</p>}
 
             <button type="submit" disabled={procesandoPago} className={`w-full text-white py-4 rounded-2xl font-bold text-lg shadow-lg transition-all mt-6 ${procesandoPago ? 'bg-gray-400 animate-pulse cursor-wait' : 'bg-green-500 hover:bg-green-600'}`}>
-              {procesandoPago ? 'Conectando con el Banco...' : `Pagar $${montoAbono}`}
+              {procesandoPago ? 'Procesando Abono...' : `Pagar Abono de $${montoAbono}`}
             </button>
           </form>
         </div>
@@ -292,13 +328,16 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
       {/* --- PASO 3: ÉXITO ABSOLUTO --- */}
       {paso === 3 && (
-        <div className="animate-fade-in flex flex-col items-center justify-center text-center space-y-6">
-          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-4 animate-bounce">
+        <div className="animate-fade-in flex flex-col items-center justify-center text-center space-y-4">
+          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-2 animate-bounce">
             <span className="text-green-500 text-5xl">✓</span>
           </div>
-          <h2 className="text-4xl font-serif text-green-600 italic">¡Pago Aprobado!</h2>
-          <p className="text-gray-600 text-lg">Tu cita ha sido agendada con éxito.</p>
-          <p className="text-pink-400 text-sm animate-pulse">Redirigiendo al panel...</p>
+          <h2 className="text-4xl font-serif text-green-600 italic">¡Reserva Exitosa!</h2>
+          <p className="text-gray-600 text-lg">Tu abono de <b>${montoAbono}</b> fue aprobado.</p>
+          <div className="bg-pink-50 text-[#b02a6b] px-6 py-3 rounded-2xl font-bold shadow-sm">
+            Se te cobrará el resto (${saldoPendiente}) al completar la cita en el local.
+          </div>
+          <p className="text-pink-400 text-xs animate-pulse mt-4">Redirigiendo a tu agenda...</p>
         </div>
       )}
 
