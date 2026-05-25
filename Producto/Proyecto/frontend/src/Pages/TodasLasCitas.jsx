@@ -23,23 +23,29 @@ export default function TodasLasCitas() {
     fetchCitas();
   }, []);
 
-  // --- FUNCIÓN ACTUALIZADA: MANDAMOS EL OBJETO COMPLETO ---
+  // --- FUNCIÓN ACTUALIZADA: LA DIETA INTELIGENTE ---
   const actualizarEstado = async (id, nuevoEstado) => {
-    // 1. Buscamos la cita original gigante con todos sus datos
+    // 1. Buscamos la cita original
     const citaActual = citas.find(c => c.id === id);
     if (!citaActual) return;
 
-    // 2. Clonamos la cita exacta y solo le pisamos el estado (El "Fat JSON")
-    const citaActualizada = { 
-        ...citaActual, 
-        estado: nuevoEstado 
+    // 2. Rescatamos los IDs de forma segura
+    const idUsuario = citaActual.usuario?.id || citaActual.usuario?.id_usuario;
+    const idEmpleado = citaActual.empleado?.id || citaActual.empleado?.id_empleado;
+
+    // 3. Armamos el paquete pequeñito solo con lo que Java necesita para el PUT
+    const paqueteLimpio = {
+      fechaHora: citaActual.fechaHora,
+      estado: nuevoEstado,
+      usuario: idUsuario ? { id: parseInt(idUsuario) } : null,
+      empleado: idEmpleado ? { id: parseInt(idEmpleado) } : null
     };
 
     try {
       const respuesta = await fetch(`http://localhost:8080/api/citas/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(citaActualizada)
+        body: JSON.stringify(paqueteLimpio)
       });
 
       if (respuesta.ok) {

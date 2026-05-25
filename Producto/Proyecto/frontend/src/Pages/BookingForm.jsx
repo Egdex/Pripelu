@@ -7,6 +7,11 @@ export default function BookingForm({ onBookingComplete, onClose }) {
   const [citasExistentes, setCitasExistentes] = useState([]);
   const [horasDisponibles, setHorasDisponibles] = useState([]);
   const [cargandoDatos, setCargandoDatos] = useState(true);
+  
+  // NUEVO: Control de pasos (1: Formulario, 2: Pago, 3: Éxito)
+  const [paso, setPaso] = useState(1);
+  const [procesandoPago, setProcesandoPago] = useState(false);
+  const [errorBackend, setErrorBackend] = useState('');
 
   const [formData, setFormData] = useState({
     servicioId: '',
@@ -16,7 +21,13 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     notas: ''
   });
 
-  // 1. CARGAMOS TODA LA ARTILLERÍA AL ABRIR EL MODAL
+  const [datosPago, setDatosPago] = useState({
+    numero: '',
+    vencimiento: '',
+    cvv: ''
+  });
+
+  // 1. CARGAMOS LOS DATOS
   useEffect(() => {
     const cargarDatos = async () => {
       try {
@@ -40,7 +51,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     cargarDatos();
   }, []);
 
-  // 2. EL CEREBRO DEL SISTEMA: CALCULAR HORAS DISPONIBLES
+  // 2. CÁLCULO DE HORAS
   useEffect(() => {
     if (!formData.empleadoId || !formData.fecha) {
       setHorasDisponibles([]);
@@ -56,7 +67,6 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     if (horarios && horarios.length > 0) {
       for (let i = 0; i < horarios.length; i++) {
         const h = horarios[i];
-        
         const idEmpBackend = h.empleado?.id || h.empleado?.id_empleado || h.id_empleado || h.empleadoId;
         const diaBackend = h.diaSemana || h.dia_semana || h.dia || h.dia_Semana;
 
@@ -111,135 +121,187 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'fecha' || name === 'empleadoId') {
-      setFormData({ ...formData, [name]: value, hora: '' });
-    } else {
-      setFormData({ ...formData, [name]: value });
-    }
+    setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = async (e) => {
+  const handlePagoChange = (e) => {
+    const { name, value } = e.target;
+    setDatosPago({ ...datosPago, [name]: value });
+  };
+
+  // 3. CÁLCULOS MATEMÁTICOS PARA EL PAGO
+  const servicioSeleccionado = servicios.find(s => parseInt(s.id) === parseInt(formData.servicioId) || parseInt(s.id_servicio) === parseInt(formData.servicioId));
+  const precioFinal = servicioSeleccionado ? servicioSeleccionado.precio : 0;
+  const duracionFinal = servicioSeleccionado ? (servicioSeleccionado.duracion_min || 45) : 45;
+  
+  const montoAbono = precioFinal * 0.20;
+  const saldoPendiente = precioFinal - montoAbono;
+
+  // PASO 1 al 2: Validamos y pasamos a la pantalla de pago
+  const handleIrAPago = (e) => {
     e.preventDefault();
     if (!formData.servicioId || !formData.empleadoId || !formData.fecha || !formData.hora) {
       return alert("Por favor, completa todos los campos obligatorios ✨");
     }
+    setPaso(2);
+  };
 
-    // Aseguramos que el ID sea un número válido, si falla ponemos 1 por defecto
-    const userId = localStorage.getItem('userId');
-    const idUsuarioLimpio = userId ? parseInt(userId) : 1; 
+  // PASO 2 al 3: Ejecutamos el Fetch simulando la tarjeta
+  const handleEjecutarPago = async (e) => {
+    e.preventDefault();
+    setProcesandoPago(true);
+    setErrorBackend('');
 
-    const servicioSeleccionado = servicios.find(s => parseInt(s.id) === parseInt(formData.servicioId) || parseInt(s.id_servicio) === parseInt(formData.servicioId));
-    const precioFinal = servicioSeleccionado ? servicioSeleccionado.precio : 0;
-    const duracionFinal = servicioSeleccionado ? (servicioSeleccionado.duracion_min || 45) : 45;
+    setTimeout(async () => {
+      const userId = localStorage.getItem('userId') || 2;
+      const idUsuarioLimpio = parseInt(userId); 
+      const fechaHoraFormateada = `${formData.fecha}T${formData.hora}:00`;
 
-    const fechaHoraFormateada = `${formData.fecha}T${formData.hora}:00`;
+      const nuevaReserva = {
+        fechaHora: fechaHoraFormateada,
+        estado: "Pendiente",
+        notas: formData.notas || "Sin notas",
+        valorTotal: precioFinal,
+        duracionTotal: duracionFinal,
+        usuario: { id: idUsuarioLimpio }, 
+        empleado: { id: parseInt(formData.empleadoId) }, 
+        detalles: [{
+            precioCita: precioFinal,
+            servicio: { id: parseInt(formData.servicioId) }
+        }]
+      };
 
-    // PAQUETE LIMPIO SOLO CON LA PROPIEDAD "id" ESTÁNDAR
-    const nuevaReserva = {
-      fechaHora: fechaHoraFormateada,
-      estado: "Pendiente",
-      notas: formData.notas || "Sin notas",
-      valorTotal: precioFinal,
-      duracionTotal: duracionFinal,
-      usuario: { id: idUsuarioLimpio }, 
-      empleado: { id: parseInt(formData.empleadoId) }, 
-      detalles: [{
-          precioCita: precioFinal,
-          servicio: { id: parseInt(formData.servicioId) }
-      }]
-    };
+      try {
+        const respuesta = await fetch('http://localhost:8080/api/citas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(nuevaReserva)
+        });
 
-    // EL CHISMOSO PARA LA CONSOLA
-    console.log("📦 PAQUETE QUE SE VA A JAVA:", JSON.stringify(nuevaReserva, null, 2));
-
-    try {
-      const respuesta = await fetch('http://localhost:8080/api/citas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(nuevaReserva)
-      });
-
-      if (respuesta.ok) {
-        alert("✅ ¡Cita agendada con éxito! Ya puedes verla en el panel.");
-        onBookingComplete(formData);
-      } else {
-        console.error("El servidor rechazó la reserva con status:", respuesta.status);
-        alert("Hubo un problema al guardar la reserva en la base de datos.");
+        if (respuesta.ok) {
+          setPaso(3); // PANTALLA DE ÉXITO
+          setTimeout(() => {
+            onBookingComplete(formData);
+          }, 2500); // Se cierra solo después de 2.5 seg
+        } else {
+          setErrorBackend("Hubo un problema al guardar la reserva en la base de datos.");
+          setProcesandoPago(false);
+        }
+      } catch (error) {
+        setErrorBackend("Error de conexión con el servidor.");
+        setProcesandoPago(false);
       }
-    } catch (error) {
-      console.error("Falla de conexión:", error);
-    }
+    }, 2500);
   };
 
   return (
-    <div className="relative bg-[#fff5f8] p-8 md:p-12 rounded-[3rem] shadow-2xl max-w-2xl w-full border border-pink-100">
-      <button onClick={onClose} className="absolute top-6 right-6 text-[#b02a6b] hover:scale-110 transition-transform font-bold text-2xl">✕</button>
-
-      <div className="text-center mb-10">
-        <p className="text-[#f171ab] text-xs font-bold uppercase tracking-[0.2em] mb-2">Reserva Online</p>
-        <h2 className="text-4xl font-serif text-[#b02a6b] italic">Tu Nueva Imagen te Espera</h2>
-      </div>
-
-      {cargandoDatos ? (
-        <p className="text-center text-[#f171ab] font-bold py-10">Conectando con el sistema...</p>
-      ) : (
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          
-          <div className="flex flex-col gap-2 md:col-span-2">
-            <label className="text-[#b02a6b] font-bold text-sm ml-2">Servicio</label>
-            <select name="servicioId" value={formData.servicioId} onChange={handleChange} className="input-pripelu" required>
-              <option value="">Selecciona lo que buscas</option>
-              {servicios.map(s => (
-                <option key={s.id || s.id_servicio} value={s.id || s.id_servicio}>
-                  {s.nombre} - ${s.precio}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2 md:col-span-2">
-            <label className="text-[#b02a6b] font-bold text-sm ml-2">Estilista</label>
-            <select name="empleadoId" value={formData.empleadoId} onChange={handleChange} className="input-pripelu" required>
-              <option value="">Elige a tu profesional</option>
-              {empleados.map(emp => (
-                <option key={emp.id || emp.id_empleado} value={emp.id || emp.id_empleado}>
-                  {emp.nombre} {emp.apellido} - {emp.especialidad}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-[#b02a6b] font-bold text-sm ml-2">Fecha</label>
-            <input name="fecha" value={formData.fecha} onChange={handleChange} type="date" className="input-pripelu" required />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-[#b02a6b] font-bold text-sm ml-2">Hora preferida</label>
-            <select name="hora" value={formData.hora} onChange={handleChange} className="input-pripelu" required disabled={!formData.empleadoId || !formData.fecha}>
-              <option value="">
-                {!formData.empleadoId || !formData.fecha 
-                  ? "Selecciona fecha y estilista" 
-                  : horasDisponibles.length === 0 
-                  ? "❌ Sin horas disponibles" 
-                  : "Selecciona una hora"}
-              </option>
-              {horasDisponibles.map(h => (
-                <option key={h} value={h}>{h}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2 md:col-span-2">
-            <label className="text-[#b02a6b] font-bold text-sm ml-2">Notas</label>
-            <textarea name="notas" value={formData.notas} onChange={handleChange} placeholder="¿Alguna alergia o detalle?" className="input-pripelu h-24 resize-none"></textarea>
-          </div>
-
-          <button type="submit" className="md:col-span-2 bg-[#f171ab] text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:bg-[#d85a94] transition-all mt-4 disabled:opacity-50" disabled={horasDisponibles.length === 0 && formData.fecha}>
-            Confirmar Reserva
-          </button>
-        </form>
+    <div className="relative bg-[#fff5f8] p-8 md:p-12 rounded-[3rem] shadow-2xl max-w-2xl w-full border border-pink-100 overflow-hidden min-h-[500px] flex flex-col justify-center">
+      
+      {/* Botón Cerrar (Solo visible si no está cargando ni en la pantalla de éxito) */}
+      {paso !== 3 && !procesandoPago && (
+        <button onClick={onClose} className="absolute top-6 right-6 text-[#b02a6b] hover:scale-110 transition-transform font-bold text-2xl z-10">✕</button>
       )}
+
+      {/* --- PASO 1: FORMULARIO DE RESERVA --- */}
+      {paso === 1 && (
+        <>
+          <div className="text-center mb-8">
+            <p className="text-[#f171ab] text-xs font-bold uppercase tracking-[0.2em] mb-2">Reserva Online</p>
+            <h2 className="text-4xl font-serif text-[#b02a6b] italic">Tu Nueva Imagen te Espera</h2>
+          </div>
+
+          {cargandoDatos ? (
+            <p className="text-center text-[#f171ab] font-bold py-10">Conectando con el sistema...</p>
+          ) : (
+            <form onSubmit={handleIrAPago} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <label className="text-[#b02a6b] font-bold text-sm ml-2">Servicio</label>
+                <select name="servicioId" value={formData.servicioId} onChange={handleChange} className="input-pripelu" required>
+                  <option value="">Selecciona lo que buscas</option>
+                  {servicios.map(s => (
+                    <option key={s.id || s.id_servicio} value={s.id || s.id_servicio}>{s.nombre} - ${s.precio}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2 md:col-span-2">
+                <label className="text-[#b02a6b] font-bold text-sm ml-2">Estilista</label>
+                <select name="empleadoId" value={formData.empleadoId} onChange={handleChange} className="input-pripelu" required>
+                  <option value="">Elige a tu profesional</option>
+                  {empleados.map(emp => (
+                    <option key={emp.id || emp.id_empleado} value={emp.id || emp.id_empleado}>{emp.nombre} {emp.apellido}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-[#b02a6b] font-bold text-sm ml-2">Fecha</label>
+                <input name="fecha" value={formData.fecha} onChange={handleChange} type="date" className="input-pripelu" required />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-[#b02a6b] font-bold text-sm ml-2">Hora preferida</label>
+                <select name="hora" value={formData.hora} onChange={handleChange} disabled={!formData.empleadoId || !formData.fecha} className="input-pripelu" required>
+                  <option value="">{!formData.empleadoId || !formData.fecha ? "Faltan datos" : horasDisponibles.length === 0 ? "❌ Sin horas" : "Selecciona hora"}</option>
+                  {horasDisponibles.map(h => (<option key={h} value={h}>{h}</option>))}
+                </select>
+              </div>
+
+              <button type="submit" className="md:col-span-2 bg-[#f171ab] text-white py-5 rounded-2xl font-bold text-lg shadow-lg hover:bg-[#d85a94] transition-all mt-4" disabled={horasDisponibles.length === 0 || !formData.servicioId}>
+                Continuar al Pago
+              </button>
+            </form>
+          )}
+        </>
+      )}
+
+      {/* --- PASO 2: MODAL DE PAGO (TARJETA) --- */}
+      {paso === 2 && (
+        <div className="animate-fade-in text-center flex flex-col h-full justify-center">
+          <button onClick={() => setPaso(1)} disabled={procesandoPago} className="absolute top-6 left-6 text-pink-400 font-bold hover:text-pink-600 disabled:opacity-50">← Volver</button>
+          
+          <h2 className="text-3xl font-serif text-[#b02a6b] italic mb-2">Pago Seguro</h2>
+          <p className="text-gray-500 text-sm mb-6">Ingresa tus datos para confirmar tu abono de <b>${montoAbono}</b>.</p>
+
+          <form onSubmit={handleEjecutarPago} className="space-y-4 max-w-sm mx-auto w-full text-left">
+            <div className="flex flex-col gap-1">
+              <label className="text-[#b02a6b] font-bold text-xs ml-2 uppercase">Número de Tarjeta</label>
+              <input type="text" name="numero" placeholder="XXXX XXXX XXXX XXXX" maxLength="16" onChange={handlePagoChange} required disabled={procesandoPago} className="input-pripelu tracking-widest text-center" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-[#b02a6b] font-bold text-xs ml-2 uppercase">Vencimiento</label>
+                <input type="text" name="vencimiento" placeholder="MM/YY" maxLength="5" onChange={handlePagoChange} required disabled={procesandoPago} className="input-pripelu text-center" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-[#b02a6b] font-bold text-xs ml-2 uppercase">CVV</label>
+                <input type="password" name="cvv" placeholder="***" maxLength="4" onChange={handlePagoChange} required disabled={procesandoPago} className="input-pripelu text-center" />
+              </div>
+            </div>
+
+            {errorBackend && <p className="text-red-500 text-xs text-center font-bold mt-2">{errorBackend}</p>}
+
+            <button type="submit" disabled={procesandoPago} className={`w-full text-white py-4 rounded-2xl font-bold text-lg shadow-lg transition-all mt-6 ${procesandoPago ? 'bg-gray-400 animate-pulse cursor-wait' : 'bg-green-500 hover:bg-green-600'}`}>
+              {procesandoPago ? 'Conectando con el Banco...' : `Pagar $${montoAbono}`}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* --- PASO 3: ÉXITO ABSOLUTO --- */}
+      {paso === 3 && (
+        <div className="animate-fade-in flex flex-col items-center justify-center text-center space-y-6">
+          <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-4 animate-bounce">
+            <span className="text-green-500 text-5xl">✓</span>
+          </div>
+          <h2 className="text-4xl font-serif text-green-600 italic">¡Pago Aprobado!</h2>
+          <p className="text-gray-600 text-lg">Tu cita ha sido agendada con éxito.</p>
+          <p className="text-pink-400 text-sm animate-pulse">Redirigiendo al panel...</p>
+        </div>
+      )}
+
     </div>
   );
 }

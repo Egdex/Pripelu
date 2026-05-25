@@ -14,7 +14,7 @@ export default function LandingPage({ onStartBooking }) {
 
   // --- ESTADOS PARA DATOS DE MYSQL ---
   const [servicios, setServicios] = useState([]);
-  const [empleados, setEmpleados] = useState([]); // Nuevo estado para el staff
+  const [empleados, setEmpleados] = useState([]); 
   const [cargando, setCargando] = useState(true);
 
   const isAuth = localStorage.getItem('isAuthenticated') === 'true';
@@ -24,15 +24,12 @@ export default function LandingPage({ onStartBooking }) {
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        // Traer Servicios
         const resServ = await fetch('http://localhost:8080/api/servicios');
         if (resServ.ok) setServicios(await resServ.servicios || await resServ.json());
 
-        // Traer Empleados
-        const resEmp = await fetch('http://localhost:8080/api/empleado'); // Ojo que el endpoint es empleado a secas no plural no que ajili 
+        const resEmp = await fetch('http://localhost:8080/api/empleado'); 
         if (resEmp.ok) {
           const dataEmp = await resEmp.json();
-          // Le decimos a React: "Si es una lista real, guárdala. Si no, guarda una lista vacía para no explotar"
           setEmpleados(Array.isArray(dataEmp) ? dataEmp : []);
         }
         
@@ -61,16 +58,18 @@ export default function LandingPage({ onStartBooking }) {
         <FloatingFlower key={f.id} {...f} />
       ))}
 
-      {/* NAVEGACIÓN */}
-      <nav className="relative z-[100] flex justify-between items-center px-8 md:px-12 py-6 bg-white/30 backdrop-blur-md sticky top-0 border-b border-pink-100">
+{/* --- NAVEGACIÓN FIXED EFECTO CRISTAL --- */}
+      <nav className="fixed top-0 left-0 w-full z-[100] flex justify-between items-center px-8 md:px-12 py-4 bg-white/70 backdrop-blur-md shadow-sm border-b border-pink-100">
          <div className="flex items-center gap-3">
-          <div className="bg-white p-2 rounded-full shadow-sm">
-            <img src="/logo-pripelu.png" alt="Logo" className="w-8" />
-          </div>
-          <span className="text-2xl font-bold text-[#f171ab]">PriPelu</span>
+          <img 
+            src="/logo-pripelu-gold-mini.png" 
+            alt="PriPelu Logo" 
+            className="h-10 w-auto hover:scale-105 transition-transform cursor-pointer"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
+          />
         </div>
         
-        <div className="hidden md:flex gap-10 text-gray-500 font-medium">
+        <div className="hidden md:flex gap-10 text-gray-600 font-bold text-sm uppercase tracking-wider">
           {['Inicio', 'Servicios', 'Equipo', 'Galería'].map((item) => (
             <a key={item} href={`#${item.toLowerCase()}`} className="hover:text-[#f171ab] transition-colors">
               {item}
@@ -130,7 +129,7 @@ export default function LandingPage({ onStartBooking }) {
       </nav>
 
       {/* HERO SECTION */}
-      <header className="relative z-10 flex flex-col items-center justify-center min-h-[90vh] text-center px-4 pt-10">
+      <header id="inicio" className="relative z-10 flex flex-col items-center justify-center min-h-[90vh] text-center px-4 pt-32">
          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-pink-100/60 backdrop-blur-sm text-[#f171ab] px-5 py-1 rounded-full text-xs font-bold mb-8 flex items-center gap-2">
           ✨ Experiencia Premium en Belleza
         </motion.div>
