@@ -16,8 +16,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.pripelu.backend.entities.Cita;
 import com.pripelu.backend.entities.CitaDetalles;
+import com.pripelu.backend.entities.Servicio;
 import com.pripelu.backend.repositories.CitaDetallesRepository;
+import com.pripelu.backend.repositories.CitaRepository;
+import com.pripelu.backend.repositories.ServicioRepository;
 import com.pripelu.backend.services.CitaDetallesServiceImpl;
 
 @ExtendWith(MockitoExtension.class)
@@ -25,6 +29,12 @@ public class CitaDetallesServiceImplTest {
 
     @Mock
     private CitaDetallesRepository citaDetallesRepo;
+
+    @Mock
+    private CitaRepository citaRepo;
+
+    @Mock
+    private ServicioRepository servicioRepo;
 
     @InjectMocks
     private CitaDetallesServiceImpl citaDetallesService;
@@ -37,19 +47,36 @@ public class CitaDetallesServiceImplTest {
         citaDetallesTest.setId(1L);
         citaDetallesTest.setPrecioCita(new BigDecimal(10000));
     }
+
     @Test
     void testCrearCitaDetalles() {
-        CitaDetalles citaDetallesNuevo = new CitaDetalles();
+        Cita citaMock = new Cita();
+    citaMock.setId(1L);
+    
+    Servicio servicioMock = new Servicio();
+    servicioMock.setId(2L);
 
-        when(citaDetallesRepo.save(any(CitaDetalles.class))).thenReturn(citaDetallesTest);
+    CitaDetalles citaDetallesNuevo = new CitaDetalles();
+    citaDetallesNuevo.setCita(citaMock);
+    citaDetallesNuevo.setServicio(servicioMock);
+    citaDetallesNuevo.setPrecioCita(new BigDecimal("10000"));
 
-        CitaDetalles resultado = citaDetallesService.crear(citaDetallesNuevo);
+    citaDetallesTest.setId(1L);
+    citaDetallesTest.setPrecioCita(new BigDecimal("10000"));
 
-        assertNotNull(resultado);
-        assertEquals(1L, resultado.getId());
-        assertEquals(new BigDecimal(10000), resultado.getPrecioCita());
+    when(citaRepo.findById(1L)).thenReturn(Optional.of(citaMock));
+    when(servicioRepo.findById(2L)).thenReturn(Optional.of(servicioMock));
+    when(citaDetallesRepo.save(any(CitaDetalles.class))).thenReturn(citaDetallesTest);
 
-        verify(citaDetallesRepo, times(1)).save(any(CitaDetalles.class));
+    CitaDetalles resultado = citaDetallesService.crear(citaDetallesNuevo);
+
+    assertNotNull(resultado);
+    assertEquals(1L, resultado.getId());
+    assertEquals(new BigDecimal("10000"), resultado.getPrecioCita());
+
+    verify(citaRepo, times(1)).findById(1L);
+    verify(servicioRepo, times(1)).findById(2L);
+    verify(citaDetallesRepo, times(1)).save(any(CitaDetalles.class));
     }
 
     @Test
