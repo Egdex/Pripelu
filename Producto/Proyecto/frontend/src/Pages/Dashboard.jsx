@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, ClipboardList, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Package, ClipboardList, ArrowLeft, AlertTriangle, BarChart3 } from 'lucide-react'; // <-- Agregué BarChart3
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -9,33 +9,28 @@ export default function Dashboard() {
 
 useEffect(() => {
     const obtenerDatosGlobales = async () => {
-      // 1. Cargamos las Citas de forma independiente
+      // 1. Cargamos las Citas
       try {
         const resCitas = await fetch('http://localhost:8080/api/citas');
         if (resCitas.ok) {
           const citasBackend = await resCitas.json();
           setCitas(citasBackend);
-        } else {
-          console.error("El backend no quiso entregar las citas.");
         }
       } catch (error) {
         console.error("Falla de conexión al pedir citas:", error);
       }
 
-      // 2. Cargamos el Inventario (Si esto falla, ya no rompe las citas)
+      // 2. Cargamos el Inventario
       try {
         const resInventario = await fetch('http://localhost:8080/api/inventarios');
         if (resInventario.ok) {
           const inventarioBackend = await resInventario.json();
           setInventario(inventarioBackend);
-        } else {
-          console.error("El backend no encontró el endpoint de inventario (/api/inventario).");
         }
       } catch (error) {
         console.error("Falla de conexión al pedir inventario:", error);
       }
 
-      // 3. Terminamos de cargar
       setCargando(false);
     };
 
@@ -54,14 +49,15 @@ useEffect(() => {
           <h1 className="text-2xl font-serif text-[#b02a6b] italic font-bold">Panel de Administración</h1>
         </div>
 
-        {/* Resumen de Tarjetas */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+        {/* Resumen de Tarjetas (AHORA CON 3 COLUMNAS) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          
           <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-pink-100 flex items-center gap-5 hover:scale-[1.02] transition-transform">
             <div className="bg-orange-100 p-4 rounded-2xl text-orange-500">
               <Package size={30} />
             </div>
             <div>
-              <p className="text-xs text-gray-400 uppercase font-black">Tipos de Productos en Bodega</p>
+              <p className="text-xs text-gray-400 uppercase font-black">Productos Bodega</p>
               {cargando ? (
                 <p className="text-sm font-bold text-orange-400">Cargando...</p>
               ) : (
@@ -75,7 +71,7 @@ useEffect(() => {
               <ClipboardList size={30} />
             </div>
             <div className="flex-grow">
-              <p className="text-xs text-gray-400 uppercase font-black">Total Citas Registradas</p>
+              <p className="text-xs text-gray-400 uppercase font-black">Total Reservas</p>
               {cargando ? (
                 <p className="text-sm font-bold text-[#f171ab]">Cargando...</p>
               ) : (
@@ -84,14 +80,32 @@ useEffect(() => {
             </div>
             <Link 
                 to="/admin/citas" 
-                className="bg-[#f171ab] text-white text-xs font-bold px-4 py-3 rounded-xl hover:bg-[#b02a6b] transition-colors shadow-lg shadow-pink-100"
+                className="bg-[#f171ab] text-white text-xs font-bold px-4 py-3 rounded-xl hover:bg-[#b02a6b] transition-colors shadow-lg shadow-pink-100 whitespace-nowrap"
             >
-                Ver reservas →
+                Ver citas →
             </Link>
           </div>
+
+          {/* NUEVA TARJETA DE REPORTES FINANCIEROS */}
+          <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-pink-100 flex items-center gap-5 hover:scale-[1.02] transition-transform">
+            <div className="bg-green-100 p-4 rounded-2xl text-green-500">
+              <BarChart3 size={30} />
+            </div>
+            <div className="flex-grow">
+              <p className="text-xs text-gray-400 uppercase font-black">Finanzas</p>
+              <p className="text-xl font-bold text-gray-700">Reportes</p>
+            </div>
+            <Link 
+                to="/admin/reportes" 
+                className="bg-green-500 text-white text-xs font-bold px-4 py-3 rounded-xl hover:bg-green-600 transition-colors shadow-lg shadow-green-100 whitespace-nowrap"
+            >
+                Ver flujos →
+            </Link>
+          </div>
+
         </div>
 
-        {/* TABLA DE INVENTARIO REAL EN LA BD */}
+        {/* TABLA DE INVENTARIO (Queda igual a como la tenías) */}
         <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-pink-50">
           <div className="bg-[#f171ab] p-6">
             <h2 className="text-white font-bold text-xl flex items-center gap-2">
@@ -122,7 +136,6 @@ useEffect(() => {
                       <span className="text-xl font-black text-gray-700">{item.stock_actual || item.stockActual}</span>
                     </td>
                     <td className="p-4 text-center flex justify-center">
-                      {/* LÓGICA DE ALERTA: Si hay 10 o menos, rojo. Si no, verde. */}
                       {(item.stock_actual || item.stockActual) <= 10 ? (
                         <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
                           <AlertTriangle size={14} /> Stock Crítico

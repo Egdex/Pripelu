@@ -27,6 +27,13 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     cvv: ''
   });
 
+  // --- CALCULAR FECHA MÍNIMA (HOY) ---
+  const fechaActual = new Date();
+  const anio = fechaActual.getFullYear();
+  const mes = String(fechaActual.getMonth() + 1).padStart(2, '0'); // +1 porque enero es 0
+  const dia = String(fechaActual.getDate()).padStart(2, '0');
+  const fechaMinima = `${anio}-${mes}-${dia}`;
+
   // 1. CARGAMOS LOS DATOS
   useEffect(() => {
     const cargarDatos = async () => {
@@ -129,19 +136,13 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     let valorFormateado = value;
 
     if (name === 'numero') {
-      // 1. Borramos cualquier cosa que no sea número
       const soloNumeros = value.replace(/\D/g, '');
-      // 2. Limitamos a un máximo de 16 números
       const limite16 = soloNumeros.substring(0, 16);
-      // 3. Agregamos un espacio cada 4 números
       valorFormateado = limite16.replace(/(\d{4})(?=\d)/g, '$1 ');
       
     } else if (name === 'vencimiento') {
-      // 1. Borramos letras y dejamos solo números
       const soloNumeros = value.replace(/\D/g, '');
-      // 2. Limitamos a 4 números máximo (MMYY)
       const limite4 = soloNumeros.substring(0, 4);
-      // 3. Insertamos el slash "/" automáticamente después del mes
       if (limite4.length >= 3) {
         valorFormateado = `${limite4.substring(0, 2)}/${limite4.substring(2, 4)}`;
       } else {
@@ -149,7 +150,6 @@ export default function BookingForm({ onBookingComplete, onClose }) {
       }
       
     } else if (name === 'cvv') {
-      // Limitamos a exactamente 3 números
       valorFormateado = value.replace(/\D/g, '').substring(0, 3);
     }
 
@@ -177,36 +177,31 @@ export default function BookingForm({ onBookingComplete, onClose }) {
   // --- PASO 2 al 3: EJECUTAR RESERVA Y PAGO AL BACKEND ---
   const handleEjecutarPago = async (e) => {
     e.preventDefault();
-    // ¡OJO AQUÍ! Solo limpiamos el error, NO ponemos a cargar todavía
     setErrorBackend(''); 
 
     // ==========================================
     // 🛡️ 1. VALIDACIONES DE TARJETA
     // ==========================================
-    
-    // Validar Número (16 dígitos)
     const numeroLimpio = datosPago.numero.replace(/\s/g, ''); 
     if (numeroLimpio.length !== 16 || isNaN(numeroLimpio)) {
       setErrorBackend('El número de tarjeta debe tener exactamente 16 dígitos numéricos.');
       return; 
     }
 
-    // Validar CVV (exactamente 3 dígitos)
     if (datosPago.cvv.length !== 3 || isNaN(datosPago.cvv)) {
       setErrorBackend('El código CVV debe tener exactamente 3 dígitos.');
       return;
     }
 
-    // Validar Vencimiento (Formato MM/YY y que no esté vencida)
     const [mes, anio] = datosPago.vencimiento.split('/');
     if (!mes || !anio || mes < 1 || mes > 12 || anio.length !== 2) {
       setErrorBackend('Usa un formato válido para el vencimiento (MM/YY). Ej: 12/28');
       return;
     }
 
-    const fechaActual = new Date();
-    const mesActual = fechaActual.getMonth() + 1; 
-    const anioActual = parseInt(fechaActual.getFullYear().toString().slice(-2)); 
+    const fechaActualValidation = new Date();
+    const mesActual = fechaActualValidation.getMonth() + 1; 
+    const anioActual = parseInt(fechaActualValidation.getFullYear().toString().slice(-2)); 
     const mesVencimiento = parseInt(mes);
     const anioVencimiento = parseInt(anio);
 
@@ -218,13 +213,12 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     // ==========================================
     // 🚀 2. TARJETA VÁLIDA: AHORA SÍ INICIAMOS EL PAGO
     // ==========================================
-    setProcesandoPago(true); // <--- LO MOVIMOS AQUÍ
+    setProcesandoPago(true);
 
     const userId = localStorage.getItem('userId') || 2;
     const idUsuarioLimpio = parseInt(userId); 
     const fechaHoraFormateada = `${formData.fecha}T${formData.hora}:00`;
 
-    // 1. Objeto de la Reserva
     const nuevaReserva = {
       fechaHora: fechaHoraFormateada,
       estado: "Pendiente",
@@ -241,7 +235,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
     try {
       await new Promise(resolve => setTimeout(resolve, 3000));
-      // 2. Primero guardamos la CITA
+      
       const respuestaCita = await fetch('http://localhost:8080/api/citas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -250,23 +244,19 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
       if (!respuestaCita.ok) throw new Error("Fallo al crear la cita");
 
-      // 3. Atrapamos la cita creada (para sacarle el ID)
       const citaCreada = await respuestaCita.json();
       const idDeLaCitaNueva = citaCreada.id || citaCreada.id_cita;
       
-
-      // 4. Creamos el objeto PAGO en base a la clase 
       const nuevoPago = {
-        cita: { id: idDeLaCitaNueva }, // Aquí hacemos la relación @ManyToOne
-        monto: montoAbono,             // Guardamos los $2.000 del abono
-        fechaPago: new Date().toISOString(), // Fecha actual automática
+        cita: { id: idDeLaCitaNueva }, 
+        monto: montoAbono,             
+        fechaPago: new Date().toISOString(), 
         metodoPago: "Tarjeta",
-        idTransaccionExacta: `TRX-${Math.floor(Math.random() * 1000000)}`, // Simulamos código bancario
+        idTransaccionExacta: `TRX-${Math.floor(Math.random() * 1000000)}`, 
         estadoPago: "Aprobado",
-        tipoPago: "Abono"              // Definimos que es la reserva, no el saldo final
+        tipoPago: "Abono"              
       };
 
-      // 5. Enviamos el PAGO al backend
       const respuestaPago = await fetch('http://localhost:8080/api/pagos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -275,7 +265,6 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
       if (!respuestaPago.ok) throw new Error("Fallo al registrar el pago");
 
-      // 6. ¡Todo salió perfecto! Pasamos a la pantalla de éxito
       setPaso(3);
       setTimeout(() => {
         onBookingComplete(formData);
@@ -330,7 +319,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
               <div className="flex flex-col gap-2">
                 <label className="text-[#b02a6b] font-bold text-sm ml-2">Fecha</label>
-                <input name="fecha" value={formData.fecha} onChange={handleChange} type="date" className="input-pripelu" required />
+                <input name="fecha" value={formData.fecha} onChange={handleChange} type="date" min={fechaMinima} className="input-pripelu" required />
               </div>
 
               <div className="flex flex-col gap-2">
@@ -340,7 +329,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
                   {horasDisponibles.map(h => (<option key={h} value={h}>{h}</option>))}
                 </select>
               </div>
-              {/* --- BOLETA PREVIA (Aparece solo si ya eligió servicio) --- */}
+              
               {formData.servicioId && (
                 <div className="md:col-span-2 bg-pink-50 p-5 rounded-2xl flex justify-between items-center border border-pink-200 shadow-inner mt-2">
                   <div>
@@ -366,7 +355,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
         <div className="animate-fade-in text-center flex flex-col h-full justify-center">
           <button onClick={() => {
                   setPaso(1);
-                  setErrorBackend(''); // Limpiamos la basura al volver
+                  setErrorBackend('');
               }} 
               disabled={procesandoPago} 
               className="absolute top-6 left-6 text-pink-400 font-bold hover:text-pink-600 disabled:opacity-50 z-10">← Volver

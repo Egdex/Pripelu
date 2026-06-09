@@ -22,7 +22,12 @@ export default function MisCitas() {
 
           // FILTRO INTELIGENTE SEGÚN TU ROL
           if (userRole === 'empleado') {
-            filtradas = citasBackend.filter(cita => cita.empleado?.id === userId || cita.empleado?.id_empleado === userId);
+            // 🚨 EL ARREGLO: Filtramos por ID o por el NOMBRE (ignorando mayúsculas por si acaso)
+            filtradas = citasBackend.filter(cita => 
+              cita.empleado?.id === userId || 
+              cita.empleado?.id_empleado === userId ||
+              cita.empleado?.nombre?.toLowerCase() === userName.toLowerCase()
+            );
             
             // Calculamos comisiones solo para empleados (50% de las citas finalizadas)
             const total = filtradas

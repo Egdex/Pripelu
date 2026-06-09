@@ -8,6 +8,7 @@ import ProtectedRoute from './components/ProtectedRute'; // Ojo con la "Rute", s
 import Register from './Pages/Register';
 import StaffDashboard from './Pages/StaffDashboard';
 import TodasLasCitas from './Pages/TodasLasCitas';
+import AdminReports from './components/AdminReports';
 
 // 1. IMPORTA EL CATÁLOGO DESDE LA CARPETA PAGES
 import Servicios from './components/Servicios'; 
@@ -37,6 +38,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin/citas" element={<ProtectedRoute><TodasLasCitas /></ProtectedRoute>} />
+        <Route path="/admin/reportes" element={<AdminReports />} />
         
         {/* 2. LA NUEVA RUTA DEL CATÁLOGO */}
         <Route path="/servicios" element={<Servicios />} />
