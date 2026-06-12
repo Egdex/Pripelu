@@ -4,8 +4,7 @@ import { render, screen, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
-// IMPORTANTE: Asegúrate de que esta ruta apunte bien a tu archivo ProtectedRute.jsx
-// Si tu archivo se llama "ProtectedRoute.jsx" o está en otra carpeta, corrígelo aquí.
+
 import ProtectedRoute from '../components/ProtectedRute.jsx'; 
 
 describe('Pruebas de Seguridad - Rutas Protegidas (Control de Acceso)', () => {

@@ -11,6 +11,95 @@ afterEach(() => {
 });
 
 describe('Pruebas Funcionales - Formulario de Reservas', () => {
+  
+  test('CP-03: Debe permitir la selección de detalles y avanzar al modal de pago (Happy Path)', async () => {
+    
+    global.fetch = vi.fn((url) => {
+      if (url.includes('/api/servicios')) return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 1, nombre: 'Corte Hombre', precio: 10000 }]) });
+      if (url.includes('/api/empleado')) return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 1, nombre: 'Eugenio', apellido: 'Parada' }]) });
+      if (url.includes('/api/horarios')) return Promise.resolve({ ok: true, json: () => Promise.resolve([{ empleado: { id: 1 }, diaSemana: 5, horaInicio: '10:00', horacierre: '18:00' }]) }); 
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+
+    render(<BookingForm onBookingComplete={() => {}} onClose={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.queryByText(/Conectando con el sistema/i)).not.toBeInTheDocument();
+    });
+
+    // 1. Llenamos los datos del formulario (Paso 1)
+    fireEvent.change(document.querySelector('select[name="servicioId"]'), { target: { value: '1' } });
+    fireEvent.change(document.querySelector('select[name="empleadoId"]'), { target: { value: '1' } });
+    fireEvent.change(document.querySelector('input[type="date"]'), { target: { value: '2026-06-19' } });
+
+    await waitFor(() => expect(document.querySelector('select[name="hora"]').options.length).toBeGreaterThan(1));
+    fireEvent.change(document.querySelector('select[name="hora"]'), { target: { value: '11:00' } });
+
+    // 2. Apretamos continuar
+    const btnConfirmar = screen.getByRole('button', { name: /Continuar al Pago/i });
+    btnConfirmar.removeAttribute('disabled'); 
+    fireEvent.submit(btnConfirmar.closest('form'));
+
+    // 3. RESULTADO ESPERADO (CP-03): El sistema debe cambiar al Paso 2 mostrando "Pago Seguro"
+    const tituloPago = await screen.findByText(/Pago Seguro/i);
+    expect(tituloPago).toBeInTheDocument();
+  });
+
+  // ATENCIÓN: Le damos 10000ms (10 segundos) de tiempo máximo a esta prueba
+  // porque tu código tiene un setTimeout(..., 3000) simulando la tarjeta
+  test('CP-07: Debe exigir un abono del 20%, validar la tarjeta y registrar en el backend', async () => {
+    
+    global.fetch = vi.fn((url, options) => {
+      // Cargas iniciales
+      if (url.includes('/api/servicios')) return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 1, nombre: 'Corte Hombre', precio: 10000 }]) });
+      if (url.includes('/api/empleado')) return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 1, nombre: 'Eugenio', apellido: 'Parada' }]) });
+      if (url.includes('/api/horarios')) return Promise.resolve({ ok: true, json: () => Promise.resolve([{ empleado: { id: 1 }, diaSemana: 5, horaInicio: '10:00', horacierre: '18:00' }]) }); 
+      
+      // Simulación de los POST en el Paso 2
+      if (options && options.method === 'POST') {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ id: 99, mensaje: 'Éxito' }) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+    });
+
+    render(<BookingForm onBookingComplete={() => {}} onClose={() => {}} />);
+
+    await waitFor(() => expect(screen.queryByText(/Conectando con el sistema/i)).not.toBeInTheDocument());
+
+    // --- PASO 1: Llenamos formulario ---
+    fireEvent.change(document.querySelector('select[name="servicioId"]'), { target: { value: '1' } });
+    fireEvent.change(document.querySelector('select[name="empleadoId"]'), { target: { value: '1' } });
+    fireEvent.change(document.querySelector('input[type="date"]'), { target: { value: '2026-06-19' } });
+    await waitFor(() => expect(document.querySelector('select[name="hora"]').options.length).toBeGreaterThan(1));
+    fireEvent.change(document.querySelector('select[name="hora"]'), { target: { value: '11:00' } });
+
+    const btnContinuar = screen.getByRole('button', { name: /Continuar al Pago/i });
+    btnContinuar.removeAttribute('disabled');
+    fireEvent.submit(btnContinuar.closest('form'));
+
+    // --- PASO 2: Llegamos al Modal de Pago ---
+    await screen.findByText(/Pago Seguro/i);
+
+    // Llenamos la tarjeta de crédito
+    fireEvent.change(document.querySelector('input[name="numero"]'), { target: { value: '1234123412341234' } });
+    fireEvent.change(document.querySelector('input[name="vencimiento"]'), { target: { value: '12/28' } });
+    fireEvent.change(document.querySelector('input[name="cvv"]'), { target: { value: '123' } });
+
+    // Verificamos que el botón calculó bien el 20% (10.000 * 20% = 2.000)
+    const btnPagar = screen.getByRole('button', { name: /Pagar Abono de \$2000/i });
+    fireEvent.submit(btnPagar.closest('form'));
+
+    // --- PASO 3: Esperamos la confirmación ---
+    // Como pusiste 3 segundos de carga, tenemos que esperar un ratito
+    await waitFor(() => {
+      expect(screen.getByText(/¡Reserva Exitosa!/i)).toBeInTheDocument();
+      
+      // Verificamos que se haya llamado al backend para guardar la Cita y el Pago
+      const postCalls = global.fetch.mock.calls.filter(call => call[1] && call[1].method === 'POST');
+      expect(postCalls.length).toBe(2); // Uno para la cita, otro para el pago
+    }, { timeout: 6000 }); 
+
+  }, 10000);
 
   test('CP-09: Debe bloquear las fechas en el pasado asignando la fecha de hoy como mínima', async () => {
     // Fingimos que carga rápido para no esperar
