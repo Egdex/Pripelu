@@ -4,31 +4,34 @@ import { render, screen, cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 
-// IMPORTANTE: Ajusta la ruta si tu componente está en otra carpeta
+
 import ProtectedRoute from '../components/ProtectedRute.jsx'; 
 
-describe('Pruebas en ProtectedRoute', () => {
+describe('Pruebas de Seguridad - Rutas Protegidas (Control de Acceso)', () => {
   
   afterEach(() => {
     cleanup();
-    // Limpiamos la memoria del navegador después de cada prueba
+    // Limpiamos la memoria del navegador después de cada prueba para que no queden "sesiones fantasma"
     localStorage.clear(); 
   });
 
-  test('Debe bloquear el paso y redirigir al login si es un intruso', () => {
-    // 1. Simulamos que NO hay sesión
-    localStorage.setItem('isAuthenticated', 'false');
+  test('SEG-01: Debe bloquear a un intruso sin sesión y redirigirlo obligatoriamente al Login', () => {
+    // 1. Aseguramos que el usuario NO está autenticado (Simulamos a alguien que recién entra a la web)
+    localStorage.removeItem('isAuthenticated');
 
-    // 2. Armamos un mini-navegador con una zona pública y una secreta
+    // 2. Armamos un mini-navegador. Simulamos que el intruso intenta tipear directamente "/admin"
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
+      <MemoryRouter initialEntries={['/admin']}>
         <Routes>
-          <Route path="/login" element={<h1>Página de Login</h1>} />
+          {/* Esta es la ruta trampa a la que el guardia lo debe patear */}
+          <Route path="/login" element={<h1>Acceso Denegado - Pantalla de Login</h1>} />
+          
+          {/* Esta es la ruta secreta que estamos protegiendo */}
           <Route 
-            path="/dashboard" 
+            path="/admin" 
             element={
               <ProtectedRoute>
-                <h1>Panel Secreto de Administración</h1>
+                <h1>Panel Financiero Secreto</h1>
               </ProtectedRoute>
             } 
           />
@@ -36,24 +39,27 @@ describe('Pruebas en ProtectedRoute', () => {
       </MemoryRouter>
     );
 
-    // 3. El guardia debió patearnos al Login
-    expect(screen.getByText(/Página de Login/i)).toBeInTheDocument();
-    // 4. El panel secreto NO debe estar en la pantalla
-    expect(screen.queryByText(/Panel Secreto/i)).not.toBeInTheDocument();
+    // 3. VERIFICACIONES DE SEGURIDAD
+    // El guardia debió detectar que no hay sesión y enviarlo a la pantalla de Login
+    expect(screen.getByText(/Acceso Denegado - Pantalla de Login/i)).toBeInTheDocument();
+    
+    // Lo más importante: Los datos financieros NUNCA debieron renderizarse en el código HTML
+    expect(screen.queryByText(/Panel Financiero Secreto/i)).not.toBeInTheDocument();
   });
 
-  test('Debe dejar pasar al usuario si tiene la sesión iniciada', () => {
-    // 1. Simulamos que SÍ hay sesión correcta
+  test('SEG-02: Debe permitir el paso al Dashboard si el usuario tiene una sesión válida', () => {
+    // 1. Simulamos que el usuario hizo Login correctamente antes de llegar aquí
     localStorage.setItem('isAuthenticated', 'true');
 
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
+      <MemoryRouter initialEntries={['/admin']}>
         <Routes>
+          <Route path="/login" element={<h1>Acceso Denegado - Pantalla de Login</h1>} />
           <Route 
-            path="/dashboard" 
+            path="/admin" 
             element={
               <ProtectedRoute>
-                <h1>Panel Secreto de Administración</h1>
+                <h1>Panel Financiero Secreto</h1>
               </ProtectedRoute>
             } 
           />
@@ -61,8 +67,12 @@ describe('Pruebas en ProtectedRoute', () => {
       </MemoryRouter>
     );
 
-    // 3. El guardia nos dejó pasar y vemos el panel
-    expect(screen.getByText(/Panel Secreto de Administración/i)).toBeInTheDocument();
+    // 2. VERIFICACIONES DE ÉXITO
+    // Como tiene las llaves (isAuthenticated = true), el sistema lo dejó pasar y ver los datos
+    expect(screen.getByText(/Panel Financiero Secreto/i)).toBeInTheDocument();
+    
+    // Y obviamente, NO lo pateó de vuelta al login
+    expect(screen.queryByText(/Acceso Denegado/i)).not.toBeInTheDocument();
   });
 
 });

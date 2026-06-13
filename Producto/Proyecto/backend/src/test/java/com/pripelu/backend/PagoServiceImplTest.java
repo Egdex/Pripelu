@@ -35,22 +35,33 @@ public class PagoServiceImplTest {
     void testCrearPago_Exitoso() {
         // 1. Preparamos los datos
         Cita citaMock = new Cita();
-        citaMock.setId(100L);
-        
-        Pago pagoNuevo = new Pago();
-        pagoNuevo.setCita(citaMock);
-        pagoNuevo.setMonto(15000);
+    citaMock.setId(100L); // Asegúrate de usar el método exacto de tu Cita (ej: setId)
+    citaMock.setEstado("PENDIENTE");
+    
+    // 2. Preparamos el Pago con su nuevo campo obligatorio
+    Pago pagoNuevo = new Pago();
+    pagoNuevo.setCita(citaMock);
+    pagoNuevo.setMonto(15000);
+    pagoNuevo.setTipoPago("ABONO"); // <-- ¡ESTO SALVA EL TEST!
+    pagoNuevo.setMetodoPago("TRANSF");
+    pagoNuevo.setIdTransaccionExacta("TX12345");
 
-        // 2. Mokeamos la validación de la cita y el guardado
-        when(citaRepo.findById(100L)).thenReturn(Optional.of(citaMock));
-        when(pagoRepo.save(any(Pago.class))).thenAnswer(i -> i.getArguments()[0]);
+    // 3. Mockeamos el comportamiento de los repositorios
+    when(citaRepo.findById(100L)).thenReturn(Optional.of(citaMock));
+    when(pagoRepo.save(any(Pago.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // 3. Ejecutamos
-        Pago resultado = pagoService.crear(pagoNuevo);
+    // 4. Ejecutamos
+    Pago resultado = pagoService.crear(pagoNuevo);
 
-        // 4. Verificamos
-        assertNotNull(resultado.getFechaPago()); // El service debe setear la fecha actual
-        assertEquals("COMPLETADO", resultado.getEstadoPago());
-        verify(citaRepo).findById(100L);
+    // 5. Verificaciones
+    assertNotNull(resultado.getFechaPago()); 
+    assertEquals("COMPLETADO", resultado.getEstadoPago());
+    assertEquals("ABONO", resultado.getTipoPago());
+    
+    // Verificamos que la lógica de negocio cambió el estado de la cita a CONFIRMADA
+    assertEquals("CONFIRMADA", citaMock.getEstado()); 
+    
+    verify(citaRepo).findById(100L);
+    verify(pagoRepo).save(any(Pago.class));
     }
 }

@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'; // Agregué useNavigate aquí por si acaso
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'; 
 import LandingPage from './Pages/LandingPage';
 import Dashboard from './Pages/Dashboard';
 import BookingForm from './Pages/BookingForm'; 
 import Login from './Pages/Login';
-import ProtectedRoute from './components/ProtectedRute'; // Ojo con la "Rute", si el archivo se llama así, está bien.
+import ProtectedRoute from './components/ProtectedRute'; 
 import Register from './Pages/Register';
 import StaffDashboard from './Pages/StaffDashboard';
 import TodasLasCitas from './Pages/TodasLasCitas';
+import AdminReports from './components/AdminReports';
+import GestionEmpleados from './Pages/GestionEmpleados'; 
+import MiCuenta from './Pages/MiCuenta';
 
 // 1. IMPORTA EL CATÁLOGO DESDE LA CARPETA PAGES
 import Servicios from './components/Servicios'; 
@@ -37,6 +40,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin/citas" element={<ProtectedRoute><TodasLasCitas /></ProtectedRoute>} />
+        <Route path="/admin/reportes" element={<AdminReports />} />
+        <Route path="/admin/empleados" element={<GestionEmpleados />} />
+        <Route path="/mi-cuenta" element={<ProtectedRoute><MiCuenta /></ProtectedRoute>} />
+
         
         {/* 2. LA NUEVA RUTA DEL CATÁLOGO */}
         <Route path="/servicios" element={<Servicios />} />

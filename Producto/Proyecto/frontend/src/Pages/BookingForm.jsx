@@ -27,6 +27,13 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     cvv: ''
   });
 
+  // --- CALCULAR FECHA MÍNIMA (HOY) ---
+  const fechaActual = new Date();
+  const anio = fechaActual.getFullYear();
+  const mes = String(fechaActual.getMonth() + 1).padStart(2, '0'); // +1 porque enero es 0
+  const dia = String(fechaActual.getDate()).padStart(2, '0');
+  const fechaMinima = `${anio}-${mes}-${dia}`;
+
   // 1. CARGAMOS LOS DATOS
   useEffect(() => {
     const cargarDatos = async () => {
@@ -126,7 +133,27 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
   const handlePagoChange = (e) => {
     const { name, value } = e.target;
-    setDatosPago({ ...datosPago, [name]: value });
+    let valorFormateado = value;
+
+    if (name === 'numero') {
+      const soloNumeros = value.replace(/\D/g, '');
+      const limite16 = soloNumeros.substring(0, 16);
+      valorFormateado = limite16.replace(/(\d{4})(?=\d)/g, '$1 ');
+      
+    } else if (name === 'vencimiento') {
+      const soloNumeros = value.replace(/\D/g, '');
+      const limite4 = soloNumeros.substring(0, 4);
+      if (limite4.length >= 3) {
+        valorFormateado = `${limite4.substring(0, 2)}/${limite4.substring(2, 4)}`;
+      } else {
+        valorFormateado = limite4;
+      }
+      
+    } else if (name === 'cvv') {
+      valorFormateado = value.replace(/\D/g, '').substring(0, 3);
+    }
+
+    setDatosPago({ ...datosPago, [name]: valorFormateado });
   };
 
   // 3. CÁLCULOS MATEMÁTICOS PARA EL PAGO
@@ -145,18 +172,53 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     }
     setPaso(2);
   };
+  
 
   // --- PASO 2 al 3: EJECUTAR RESERVA Y PAGO AL BACKEND ---
   const handleEjecutarPago = async (e) => {
     e.preventDefault();
+    setErrorBackend(''); 
+
+    // ==========================================
+    // 🛡️ 1. VALIDACIONES DE TARJETA
+    // ==========================================
+    const numeroLimpio = datosPago.numero.replace(/\s/g, ''); 
+    if (numeroLimpio.length !== 16 || isNaN(numeroLimpio)) {
+      setErrorBackend('El número de tarjeta debe tener exactamente 16 dígitos numéricos.');
+      return; 
+    }
+
+    if (datosPago.cvv.length !== 3 || isNaN(datosPago.cvv)) {
+      setErrorBackend('El código CVV debe tener exactamente 3 dígitos.');
+      return;
+    }
+
+    const [mes, anio] = datosPago.vencimiento.split('/');
+    if (!mes || !anio || mes < 1 || mes > 12 || anio.length !== 2) {
+      setErrorBackend('Usa un formato válido para el vencimiento (MM/YY). Ej: 12/28');
+      return;
+    }
+
+    const fechaActualValidation = new Date();
+    const mesActual = fechaActualValidation.getMonth() + 1; 
+    const anioActual = parseInt(fechaActualValidation.getFullYear().toString().slice(-2)); 
+    const mesVencimiento = parseInt(mes);
+    const anioVencimiento = parseInt(anio);
+
+    if (anioVencimiento < anioActual || (anioVencimiento === anioActual && mesVencimiento < mesActual)) {
+      setErrorBackend('La tarjeta ingresada se encuentra vencida. Usa otra tarjeta.');
+      return;
+    }
+
+    // ==========================================
+    // 🚀 2. TARJETA VÁLIDA: AHORA SÍ INICIAMOS EL PAGO
+    // ==========================================
     setProcesandoPago(true);
-    setErrorBackend('');
 
     const userId = localStorage.getItem('userId') || 2;
     const idUsuarioLimpio = parseInt(userId); 
     const fechaHoraFormateada = `${formData.fecha}T${formData.hora}:00`;
 
-    // 1. Objeto de la Reserva
     const nuevaReserva = {
       fechaHora: fechaHoraFormateada,
       estado: "Pendiente",
@@ -172,7 +234,8 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     };
 
     try {
-      // 2. Primero guardamos la CITA
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       const respuestaCita = await fetch('http://localhost:8080/api/citas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -181,23 +244,19 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
       if (!respuestaCita.ok) throw new Error("Fallo al crear la cita");
 
-      // 3. Atrapamos la cita creada (para sacarle el ID)
       const citaCreada = await respuestaCita.json();
       const idDeLaCitaNueva = citaCreada.id || citaCreada.id_cita;
       
-
-      // 4. Creamos el objeto PAGO en base a la clase del Eugenio
       const nuevoPago = {
-        cita: { id: idDeLaCitaNueva }, // Aquí hacemos la relación @ManyToOne
-        monto: montoAbono,             // Guardamos los $2.000 del abono
-        fechaPago: new Date().toISOString(), // Fecha actual automática
+        cita: { id: idDeLaCitaNueva }, 
+        monto: montoAbono,             
+        fechaPago: new Date().toISOString(), 
         metodoPago: "Tarjeta",
-        idTransaccionExacta: `TRX-${Math.floor(Math.random() * 1000000)}`, // Simulamos código bancario
+        idTransaccionExacta: `TRX-${Math.floor(Math.random() * 1000000)}`, 
         estadoPago: "Aprobado",
-        tipoPago: "Abono"              // Definimos que es la reserva, no el saldo final
+        tipoPago: "Abono"              
       };
 
-      // 5. Enviamos el PAGO al backend
       const respuestaPago = await fetch('http://localhost:8080/api/pagos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -206,7 +265,6 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
       if (!respuestaPago.ok) throw new Error("Fallo al registrar el pago");
 
-      // 6. ¡Todo salió perfecto! Pasamos a la pantalla de éxito
       setPaso(3);
       setTimeout(() => {
         onBookingComplete(formData);
@@ -261,7 +319,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
 
               <div className="flex flex-col gap-2">
                 <label className="text-[#b02a6b] font-bold text-sm ml-2">Fecha</label>
-                <input name="fecha" value={formData.fecha} onChange={handleChange} type="date" className="input-pripelu" required />
+                <input name="fecha" value={formData.fecha} onChange={handleChange} type="date" min={fechaMinima} className="input-pripelu" required />
               </div>
 
               <div className="flex flex-col gap-2">
@@ -271,7 +329,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
                   {horasDisponibles.map(h => (<option key={h} value={h}>{h}</option>))}
                 </select>
               </div>
-              {/* --- BOLETA PREVIA (Aparece solo si ya eligió servicio) --- */}
+              
               {formData.servicioId && (
                 <div className="md:col-span-2 bg-pink-50 p-5 rounded-2xl flex justify-between items-center border border-pink-200 shadow-inner mt-2">
                   <div>
@@ -295,25 +353,32 @@ export default function BookingForm({ onBookingComplete, onClose }) {
       {/* --- PASO 2: MODAL DE PAGO (TARJETA) --- */}
       {paso === 2 && (
         <div className="animate-fade-in text-center flex flex-col h-full justify-center">
-          <button onClick={() => setPaso(1)} disabled={procesandoPago} className="absolute top-6 left-6 text-pink-400 font-bold hover:text-pink-600 disabled:opacity-50">← Volver</button>
+          <button onClick={() => {
+                  setPaso(1);
+                  setErrorBackend('');
+              }} 
+              disabled={procesandoPago} 
+              className="absolute top-6 left-6 text-pink-400 font-bold hover:text-pink-600 disabled:opacity-50 z-10">← Volver
+          </button>
           
           <h2 className="text-3xl font-serif text-[#b02a6b] italic mb-2">Pago Seguro</h2>
           <p className="text-gray-500 text-sm mb-6">Ingresa tus datos para confirmar tu abono de <b>${montoAbono}</b>.</p>
 
+          {/* Input de Pago */}
           <form onSubmit={handleEjecutarPago} className="space-y-4 max-w-sm mx-auto w-full text-left">
             <div className="flex flex-col gap-1">
               <label className="text-[#b02a6b] font-bold text-xs ml-2 uppercase">Número de Tarjeta</label>
-              <input type="text" name="numero" placeholder="XXXX XXXX XXXX XXXX" maxLength="16" onChange={handlePagoChange} required disabled={procesandoPago} className="input-pripelu tracking-widest text-center" />
+              <input type="text" name="numero" placeholder="XXXX XXXX XXXX XXXX" maxLength="19" value={datosPago.numero} onChange={handlePagoChange} required disabled={procesandoPago} className="input-pripelu tracking-widest text-center" />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-[#b02a6b] font-bold text-xs ml-2 uppercase">Vencimiento</label>
-                <input type="text" name="vencimiento" placeholder="MM/YY" maxLength="5" onChange={handlePagoChange} required disabled={procesandoPago} className="input-pripelu text-center" />
+                <input type="text" name="vencimiento" placeholder="MM/YY" maxLength="5" value={datosPago.vencimiento} onChange={handlePagoChange} required disabled={procesandoPago} className="input-pripelu text-center" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-[#b02a6b] font-bold text-xs ml-2 uppercase">CVV</label>
-                <input type="password" name="cvv" placeholder="***" maxLength="4" onChange={handlePagoChange} required disabled={procesandoPago} className="input-pripelu text-center" />
+                <input type="password" name="cvv" placeholder="***" maxLength="3" value={datosPago.cvv} onChange={handlePagoChange} required disabled={procesandoPago} className="input-pripelu text-center" />
               </div>
             </div>
 
@@ -338,6 +403,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
             Se te cobrará el resto (${saldoPendiente}) al completar la cita en el local.
           </div>
           <p className="text-pink-400 text-xs animate-pulse mt-4">Redirigiendo a tu agenda...</p>
+          
         </div>
       )}
 
