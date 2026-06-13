@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.pripelu.backend.entities.InsumosUtilizados;
 import com.pripelu.backend.services.InsumosUtiServices;
 
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/insumosuti")
 public class InsumosUtiRestControllers {

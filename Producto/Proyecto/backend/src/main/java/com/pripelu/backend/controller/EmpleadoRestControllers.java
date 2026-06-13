@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.pripelu.backend.entities.Empleado;
 import com.pripelu.backend.services.EmpleadoServices;
 
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/empleado")
 public class EmpleadoRestControllers {

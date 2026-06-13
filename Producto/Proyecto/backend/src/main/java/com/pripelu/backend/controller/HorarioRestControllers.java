@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.pripelu.backend.entities.Horario;
 import com.pripelu.backend.services.HorarioServices;
 
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/horarios")
 public class HorarioRestControllers {

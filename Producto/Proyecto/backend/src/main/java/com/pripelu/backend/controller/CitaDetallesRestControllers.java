@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.pripelu.backend.entities.CitaDetalles;
 import com.pripelu.backend.services.CitaDetallesServices;
 
-@CrossOrigin(origins = "http://localhost:4200")
+@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/citasDetalles")
 public class CitaDetallesRestControllers {
