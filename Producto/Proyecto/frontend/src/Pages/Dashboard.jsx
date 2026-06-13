@@ -103,6 +103,23 @@ useEffect(() => {
             </Link>
           </div>
 
+          <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-pink-100 flex items-center gap-5 hover:scale-[1.02] transition-transform">
+            <div className="bg-green-100 p-4 rounded-2xl text-green-500">
+              <BarChart3 size={30} />
+            </div>
+            <div className="flex-grow">
+              <p className="text-xs text-gray-400 uppercase font-black">Finanzas</p>
+              <p className="text-xl font-bold text-gray-700">Gestión de Empleados</p>
+            </div>
+            <Link 
+                to="/admin/empleados" 
+                className="bg-green-500 text-white text-xs font-bold px-4 py-3 rounded-xl hover:bg-green-600 transition-colors shadow-lg shadow-green-100 whitespace-nowrap"
+            >
+                Ver flujos →
+            </Link>
+          </div>
+       
+
         </div>
 
         {/* TABLA DE INVENTARIO (Queda igual a como la tenías) */}

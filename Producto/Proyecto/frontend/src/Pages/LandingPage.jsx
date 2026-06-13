@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Play, MapPin, Phone, Clock, LogOut, Settings, Calendar, ClipboardList, Scissors } from 'lucide-react';
+import { User, Play, MapPin, Phone, Clock, LogOut, Settings, Calendar, ClipboardList, Scissors } from 'lucide-react';
 import { floresData } from '../data'; 
 import { TarjetaEquipo } from '../components/TarjetasEquipo';
 import { FloatingFlower } from '../components/Flores';
@@ -114,6 +114,10 @@ export default function LandingPage({ onStartBooking }) {
                     </Link>
                   )}
 
+                  <Link to="/mi-cuenta" onClick={() => setShowDropdown(false)} className="dropdown-item">
+                    <User size={16} /> Mi Cuenta
+                  </Link>
+                  
                   <button onClick={handleLogout} className="dropdown-item w-full text-red-500">
                     <LogOut size={16} /> Cerrar Sesión
                   </button>
