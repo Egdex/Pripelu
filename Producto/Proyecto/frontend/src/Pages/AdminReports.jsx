@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart3, DollarSign, Calendar, ShieldAlert, Percent } from 'lucide-react';
+import { BarChart3, DollarSign, Calendar, ShieldAlert, Percent, ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom'; // <-- AÑADIDO: Importación para poder navegar
 
 export default function AdminReports() {
   const [citas, setCitas] = useState([]);
-  const [pagos, setPagos] = useState([]); // <-- Nuevo estado para leer los abonos reales
+  const [pagos, setPagos] = useState([]); 
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
 
@@ -17,10 +18,9 @@ export default function AdminReports() {
 
     const obtenerDatosGlobales = async () => {
       try {
-        // 🚀 LLAMAMOS A AMBOS ENDPOINTS AL MISMO TIEMPO
         const [resCitas, resPagos] = await Promise.all([
           fetch('http://localhost:8080/api/citas'),
-          fetch('http://localhost:8080/api/pagos') // Tu endpoint de la tabla pagos
+          fetch('http://localhost:8080/api/pagos') 
         ]);
 
         if (resCitas.ok) {
@@ -52,15 +52,17 @@ export default function AdminReports() {
         <div className="bg-white p-8 rounded-[2rem] shadow-xl max-w-md border border-red-200 flex flex-col items-center gap-4">
           <ShieldAlert size={64} className="text-red-500" />
           <h2 className="text-2xl font-bold text-red-700">Acceso Restringido</h2>
-          <p className="text-gray-500 text-sm">Este panel es exclusivo para administradores.</p>
+          <p className="text-gray-500 text-sm mb-4">Este panel es exclusivo para administradores.</p>
+          {/* <-- AÑADIDO: Botón para salvar a los curiosos atrapados aquí */}
+          <Link to="/" className="bg-red-100 text-red-700 px-6 py-2 rounded-xl font-bold hover:bg-red-200 transition-colors">
+            Volver al Inicio
+          </Link>
         </div>
       </div>
     );
   }
-
-  // ==========================================
-  // 📊 BALANCES REALES BASADOS EN BASE DE DATOS
-  // ==========================================
+  
+  // BALANCES REALES BASADOS EN BASE DE DATOS
 
   // 1. Citas válidas
   const citasValidas = citas.filter(c => c.estado?.toLowerCase() !== 'cancelado');
@@ -71,8 +73,7 @@ export default function AdminReports() {
     .filter(c => c.estado?.toLowerCase() === 'finalizado')
     .reduce((acc, c) => acc + (c.valorTotal || 0), 0);
 
-  // 3. LA CORRECCIÓN MÁGICA: Abonos reales registrados en la tabla pagos
-  // Filtra los pagos que sean de tipo "abono" o "Abono"
+  // 3. Abonos reales registrados en la tabla pagos
   const dineroAbonosReales = pagos
     .filter(p => p.tipoPago?.toLowerCase() === 'abono' || p.tipo_pago?.toLowerCase() === 'abono')
     .reduce((acc, p) => acc + (p.monto || p.valor || 0), 0);
@@ -85,6 +86,10 @@ export default function AdminReports() {
       <div className="max-w-6xl mx-auto space-y-8">
         
         <div>
+          {/* <-- AÑADIDO: Botón para volver al Dashboard de Admin */}
+          <Link to="/admin" className="text-[#f171ab] flex items-center gap-2 hover:underline font-bold mb-6 w-fit">
+            <ArrowLeft size={20} /> Volver al Dashboard
+          </Link>
           <h1 className="text-4xl font-serif text-[#b02a6b] italic font-bold">Panel de Reportes Financieros</h1>
           <p className="text-gray-500 text-sm font-medium uppercase tracking-widest mt-1">Control de caja y pasarela de abonos</p>
         </div>

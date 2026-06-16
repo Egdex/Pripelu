@@ -8,7 +8,7 @@ import ProtectedRoute from './components/ProtectedRute';
 import Register from './Pages/Register';
 import StaffDashboard from './Pages/StaffDashboard';
 import TodasLasCitas from './Pages/TodasLasCitas';
-import AdminReports from './components/AdminReports';
+import AdminReports from './Pages/AdminReports';
 import GestionEmpleados from './Pages/GestionEmpleados'; 
 import MiCuenta from './Pages/MiCuenta';
 
@@ -24,9 +24,7 @@ function App() {
     if (isAuth) {
       setShowModal(true); 
     } else {
-      alert("Para agendar tu cita, primero debes iniciar sesión o crear una cuenta ✨");
-      // Ojo: navigate solo funciona dentro de un componente Router, 
-      // si te tira error al cliquear el botón en la Landing, te enseño cómo arreglarlo rápido.
+      alert("Para agendar tu cita, primero debes iniciar sesión o crear una cuenta");
       window.location.href = '/login'; 
     }
   };

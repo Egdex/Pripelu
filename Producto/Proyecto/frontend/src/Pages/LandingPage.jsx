@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { User, Play, MapPin, Phone, Clock, LogOut, Settings, Calendar, ClipboardList, Scissors } from 'lucide-react';
 import { floresData } from '../data'; 
@@ -11,6 +11,9 @@ import { Link, useNavigate } from 'react-router-dom';
 export default function LandingPage({ onStartBooking }) {
   const [showDropdown, setShowDropdown] = useState(false);
   const navigate = useNavigate();
+  
+  // --- NUEVO: ESPÍA PARA CERRAR EL MENÚ ---
+  const dropdownRef = useRef(null);
 
   // --- ESTADOS PARA DATOS DE MYSQL ---
   const [servicios, setServicios] = useState([]);
@@ -19,6 +22,25 @@ export default function LandingPage({ onStartBooking }) {
 
   const isAuth = localStorage.getItem('isAuthenticated') === 'true';
   const userRole = localStorage.getItem('userRole'); 
+
+  // --- NUEVO: EFECTO PARA CLICK OUTSIDE ---
+  useEffect(() => {
+    const handleClickFuera = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+
+    // Le decimos a React que pregunte si "document" existe antes de usarlo
+    if (typeof document !== 'undefined') {
+      document.addEventListener('mousedown', handleClickFuera);
+      
+      // La función de limpieza también protegida
+      return () => {
+        document.removeEventListener('mousedown', handleClickFuera);
+      };
+    }
+  }, []);
 
   // --- CARGA DE DATOS AL INICIAR ---
   useEffect(() => {
@@ -59,7 +81,7 @@ export default function LandingPage({ onStartBooking }) {
       ))}
 
       {/* --- NAVEGACIÓN FIXED EFECTO CRISTAL (Limpio) --- */}
-      <nav className="nav-cristal">
+      <nav className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 md:px-12 py-4 bg-white/40 backdrop-blur-md border-b border-white/50 shadow-sm transition-all duration-300">
          <div className="flex items-center gap-3">
           <img 
             src="/logo-pripelu-gold-mini.png" 
@@ -79,7 +101,8 @@ export default function LandingPage({ onStartBooking }) {
 
         <div className="relative">
           {isAuth ? (
-            <div className="relative">
+            // NUEVO: Agregamos el ref al contenedor del dropdown
+            <div className="relative" ref={dropdownRef}>
               <button 
                 onClick={() => setShowDropdown(!showDropdown)}
                 className="btn-avatar"
@@ -88,7 +111,8 @@ export default function LandingPage({ onStartBooking }) {
               </button>
 
               {showDropdown && (
-                <div className="dropdown-menu">
+                // NUEVO: Clases absolute, z-50 y shadow-2xl para que el menú flote
+                <div className="absolute right-0 top-[120%] w-56 bg-white rounded-2xl shadow-2xl border border-pink-100 overflow-hidden z-50 flex flex-col">
                   <div className="p-4 border-b border-gray-50 bg-pink-50/20 text-center">
                     <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Mi Cuenta</p>
                     <p className="text-[#b02a6b] text-xs font-bold italic">
@@ -98,27 +122,27 @@ export default function LandingPage({ onStartBooking }) {
                     </p>
                   </div>
                   
-                  <Link to="/mis-citas" onClick={() => setShowDropdown(false)} className="dropdown-item">
-                    <Calendar size={16} /> Mis Citas
+                  <Link to="/mis-citas" onClick={() => setShowDropdown(false)} className="px-4 py-3 text-sm text-gray-600 hover:bg-pink-50 flex items-center gap-2 border-b border-gray-50">
+                    <Calendar size={16} className="text-[#f171ab]"/> Mis Citas
                   </Link>
 
                   {userRole === 'admin' && (
-                    <Link to="/admin" onClick={() => setShowDropdown(false)} className="dropdown-item text-[#b02a6b] font-bold">
+                    <Link to="/admin" onClick={() => setShowDropdown(false)} className="px-4 py-3 text-sm text-[#b02a6b] hover:bg-pink-50 flex items-center gap-2 font-bold border-b border-gray-50">
                       <Settings size={16} /> Panel de Gestión
                     </Link>
                   )}
 
                   {userRole === 'empleado' && (
-                    <Link to="/mis-citas" onClick={() => setShowDropdown(false)} className="dropdown-item text-blue-600 font-bold">
+                    <Link to="/mis-citas" onClick={() => setShowDropdown(false)} className="px-4 py-3 text-sm text-blue-600 hover:bg-blue-50 flex items-center gap-2 font-bold border-b border-gray-50">
                       <ClipboardList size={16} /> Ver Mi Agenda
                     </Link>
                   )}
 
-                  <Link to="/mi-cuenta" onClick={() => setShowDropdown(false)} className="dropdown-item">
-                    <User size={16} /> Mi Cuenta
+                  <Link to="/mi-cuenta" onClick={() => setShowDropdown(false)} className="px-4 py-3 text-sm text-gray-600 hover:bg-pink-50 flex items-center gap-2 border-b border-gray-50">
+                    <User size={16} className="text-[#f171ab]" /> Mi Cuenta
                   </Link>
                   
-                  <button onClick={handleLogout} className="dropdown-item w-full text-red-500">
+                  <button onClick={handleLogout} className="px-4 py-3 text-sm text-red-500 hover:bg-red-50 flex items-center gap-2 w-full text-left font-bold transition-colors">
                     <LogOut size={16} /> Cerrar Sesión
                   </button>
                 </div>

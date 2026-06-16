@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, User, Scissors, CheckCircle, XCircle, DollarSign, Package } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Scissors, CheckCircle, XCircle, DollarSign, Package, Loader2, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function TodasLasCitas() {
   const [citas, setCitas] = useState([]);
   const [cargando, setCargando] = useState(true);
 
-  // --- ESTADOS PARA EL MODAL ---
+  // --- ESTADOS PARA EL MODAL DE COBRO ---
   const [modalAbierto, setModalAbierto] = useState(false);
   const [citaSeleccionada, setCitaSeleccionada] = useState(null);
   const [insumosAGastar, setInsumosAGastar] = useState([]);
-  const [procesandoPago, setProcesandoPago] = useState(false);
+  
+  // NUEVO: Controlamos en qué parte del pago vamos ('resumen', 'procesando', 'exito')
+  const [pasoPago, setPasoPago] = useState('resumen'); 
 
   useEffect(() => {
     const fetchCitas = async () => {
@@ -46,16 +48,16 @@ export default function TodasLasCitas() {
     }
   };
 
-  // --- 1. ABRIR EL MODAL (LECTURA INTELIGENTE DE RECETAS) ---
+  // --- 1. ABRIR EL MODAL ---
   const abrirModalCobro = async (cita) => {
     setCitaSeleccionada(cita);
+    setPasoPago('resumen'); // Siempre empezamos en el resumen
     setModalAbierto(true);
-    setInsumosAGastar([]); // Limpiamos
+    setInsumosAGastar([]); 
 
     let insumosDeLaCita = cita.detalles?.[0]?.servicio?.insumosRequeridos;
     const idServicio = cita.detalles?.[0]?.servicio?.id || cita.detalles?.[0]?.servicio?.id_servicio;
 
-    // Si por cosas de Spring Boot no viene anidado en la cita, lo buscamos en el catálogo de servicios
     if (!insumosDeLaCita && idServicio) {
       try {
         const resServicios = await fetch('http://localhost:8080/api/servicios');
@@ -67,7 +69,6 @@ export default function TodasLasCitas() {
       }
     }
 
-    // Si encontramos la receta, la mapeamos para mostrarla en el modal
     if (insumosDeLaCita && insumosDeLaCita.length > 0) {
       const gastosMapeados = insumosDeLaCita.map(item => ({
         idInsumoReal: item.inventario?.id || item.inventario?.id_insumo,
@@ -78,10 +79,19 @@ export default function TodasLasCitas() {
     }
   };
 
-  // --- 2. CONFIRMAR PAGO Y DESCONTAR ---
+  // --- 2. INICIAR LA SIMULACIÓN DE PAGO (Transbank Fake) ---
+  const iniciarPagoSimulado = () => {
+    setPasoPago('procesando'); // Cambia la UI a estado de carga
+
+    // Simulamos que la maquinita está pensando por 2.5 segundos
+    setTimeout(() => {
+      confirmarCobroYFinalizar();
+    }, 2500);
+  };
+
+  // --- 3. CONFIRMAR PAGO EN LA BASE DE DATOS Y DESCONTAR BODEGA ---
   const confirmarCobroYFinalizar = async () => {
     if (!citaSeleccionada) return;
-    setProcesandoPago(true);
 
     const idCita = citaSeleccionada.id || citaSeleccionada.id_cita;
 
@@ -95,7 +105,6 @@ export default function TodasLasCitas() {
           const resStock = await fetch(`http://localhost:8080/api/inventarios/${idInsumo}`);
           if (resStock.ok) {
             const productoActual = await resStock.json();
-
             const stockViejo = productoActual.stockActual || productoActual.stock_actual;
             const stockNuevo = Math.max(0, stockViejo - cantidadRestar);
 
@@ -131,16 +140,24 @@ export default function TodasLasCitas() {
 
       if (respuestaCita.ok) {
         setCitas(citas.map(c => c.id === idCita ? { ...c, estado: 'Finalizado' } : c));
-        setModalAbierto(false);
+        
+        // C) MOSTRAMOS LA PANTALLA DE ÉXITO
+        setPasoPago('exito');
+
+        // D) CERRAMOS EL MODAL AUTOMÁTICAMENTE DESPUÉS DE 2 SEGUNDOS
+        setTimeout(() => {
+          setModalAbierto(false);
+          setCitaSeleccionada(null);
+        }, 2000);
+
       } else {
         alert("Hubo un error al actualizar el estado de la cita.");
+        setPasoPago('resumen');
       }
     } catch (error) {
       console.error("Error en el proceso final:", error);
       alert("Error de conexión durante el pago y descuento.");
-    } finally {
-      setProcesandoPago(false);
-      setCitaSeleccionada(null);
+      setPasoPago('resumen');
     }
   };
 
@@ -182,62 +199,98 @@ export default function TodasLasCitas() {
   return (
     <div className="min-h-screen bg-[#fdf2f8] p-4 md:p-8 relative">
       
+      {/* ================= MODAL DE PAGO INTELIGENTE ================= */}
       {modalAbierto && citaSeleccionada && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden border border-pink-100 animate-in zoom-in duration-200">
             
-            <div className="bg-[#f171ab] p-6 text-white text-center relative">
-              <button onClick={() => setModalAbierto(false)} className="absolute top-6 right-6 font-bold hover:scale-110 transition-transform text-xl">✕</button>
-              <h2 className="text-2xl font-serif italic font-bold">Finalizar Cita</h2>
-              <p className="text-sm opacity-80 mt-1">Resumen de cobro y bodega</p>
+            {/* CABECERA DEL MODAL */}
+            <div className={`${pasoPago === 'exito' ? 'bg-green-500' : 'bg-[#f171ab]'} p-6 text-white text-center relative transition-colors duration-500`}>
+              {pasoPago === 'resumen' && (
+                <button onClick={() => setModalAbierto(false)} className="absolute top-6 right-6 font-bold hover:scale-110 transition-transform text-xl">✕</button>
+              )}
+              <h2 className="text-2xl font-serif italic font-bold">
+                {pasoPago === 'resumen' ? 'Proceso de Cobro' : pasoPago === 'procesando' ? 'Terminal de Pago' : 'Transacción Exitosa'}
+              </h2>
             </div>
 
-            <div className="p-8 space-y-6">
-              <div className="bg-pink-50 p-5 rounded-2xl border border-pink-100">
-                <div className="flex justify-between items-center mb-2 text-gray-600">
-                  <span>Valor Total del Servicio:</span>
-                  <span className="font-bold">${citaSeleccionada.valorTotal?.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center mb-4 text-green-600 border-b border-pink-100 pb-4">
-                  <span>Abono Pagado (Online):</span>
-                  <span className="font-bold">- ${(citaSeleccionada.valorTotal * 0.20).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center text-[#b02a6b] text-xl font-black">
-                  <span>Saldo a Cobrar Hoy:</span>
-                  <span>${(citaSeleccionada.valorTotal * 0.80).toLocaleString()}</span>
-                </div>
-              </div>
+            {/* CUERPO DEL MODAL DINÁMICO */}
+            <div className="p-8">
+              
+              {/* VISTA 1: RESUMEN DE COBRO Y BODEGA */}
+              {pasoPago === 'resumen' && (
+                <div className="space-y-6 animate-in fade-in">
+                  <div className="bg-pink-50 p-5 rounded-2xl border border-pink-100">
+                    <div className="flex justify-between items-center mb-2 text-gray-600">
+                      <span>Valor Total del Servicio:</span>
+                      <span className="font-bold">${citaSeleccionada.valorTotal?.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center mb-4 text-green-600 border-b border-pink-100 pb-4">
+                      <span>Abono Web (Ya pagado):</span>
+                      <span className="font-bold">- ${(citaSeleccionada.valorTotal * 0.20).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[#b02a6b] text-xl font-black">
+                      <span>Total a Pagar en Local:</span>
+                      <span>${(citaSeleccionada.valorTotal * 0.80).toLocaleString()}</span>
+                    </div>
+                  </div>
 
-              <div>
-                <h3 className="text-[#b02a6b] font-bold text-sm uppercase tracking-widest mb-3 flex items-center gap-2">
-                  <Package size={16}/> Stock a descontar
-                </h3>
-                {insumosAGastar.length > 0 ? (
-                  <ul className="space-y-2">
-                    {insumosAGastar.map((insumo, idx) => (
-                      <li key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-lg border border-gray-100">
-                        <span className="text-gray-700 font-medium">{insumo.nombreProducto}</span>
-                        <span className="text-red-500 font-bold bg-red-50 px-2 py-1 rounded-md border border-red-100">- {insumo.cantidad} unid.</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">Este servicio no requiere descontar insumos de la bodega.</p>
-                )}
-              </div>
+                  <div>
+                    <h3 className="text-[#b02a6b] font-bold text-sm uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Package size={16}/> Bodega: Stock a rebajar
+                    </h3>
+                    {insumosAGastar.length > 0 ? (
+                      <ul className="space-y-2">
+                        {insumosAGastar.map((insumo, idx) => (
+                          <li key={idx} className="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-lg border border-gray-100">
+                            <span className="text-gray-700 font-medium">{insumo.nombreProducto}</span>
+                            <span className="text-red-500 font-bold bg-red-50 px-2 py-1 rounded-md border border-red-100">- {insumo.cantidad} unid.</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">Este servicio no requiere descontar insumos.</p>
+                    )}
+                  </div>
 
-              <button 
-                onClick={confirmarCobroYFinalizar}
-                disabled={procesandoPago}
-                className="w-full bg-[#f171ab] hover:bg-[#d85a94] text-white py-4 rounded-full font-bold text-lg shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
-              >
-                {procesandoPago ? 'Procesando Descuentos...' : <><DollarSign size={20}/> Confirmar Pago Final</>}
-              </button>
+                  <button 
+                    onClick={iniciarPagoSimulado}
+                    className="w-full bg-[#f171ab] hover:bg-[#d85a94] text-white py-4 rounded-full font-bold text-lg shadow-lg transition-all flex items-center justify-center gap-2 mt-4"
+                  >
+                    <CreditCard size={20}/> Procesar Pago y Finalizar
+                  </button>
+                </div>
+              )}
+
+              {/* VISTA 2: PROCESANDO (SIMULACIÓN DE TRANSBANK) */}
+              {pasoPago === 'procesando' && (
+                <div className="py-12 flex flex-col items-center justify-center space-y-6 animate-in fade-in">
+                  <Loader2 size={64} className="text-[#f171ab] animate-spin" />
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold text-gray-800">Conectando con el Banco...</h3>
+                    <p className="text-gray-500 text-sm mt-2">Por favor, siga las instrucciones en el terminal (POS).</p>
+                  </div>
+                </div>
+              )}
+
+              {/* VISTA 3: ÉXITO */}
+              {pasoPago === 'exito' && (
+                <div className="py-12 flex flex-col items-center justify-center space-y-6 animate-in zoom-in">
+                  <div className="bg-green-100 p-6 rounded-full text-green-500">
+                    <CheckCircle size={64} />
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-2xl font-black text-green-600">¡Pago Aprobado!</h3>
+                    <p className="text-gray-500 font-medium mt-2">La cita ha sido finalizada y el inventario rebajado.</p>
+                  </div>
+                </div>
+              )}
+
             </div>
-
           </div>
         </div>
       )}
+      {/* ========================================================= */}
 
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -245,7 +298,7 @@ export default function TodasLasCitas() {
             <Link to="/admin" className="flex items-center gap-2 text-[#f171ab] font-bold hover:underline">
               <ArrowLeft size={20} /> Volver
             </Link>
-            <h1 className="text-3xl font-serif text-[#b02a6b] italic font-bold">Gestión de Reservas</h1>
+            <h1 className="text-3xl font-serif text-[#b02a6b] italic font-bold">Caja y Reservas</h1>
           </div>
           
           <button 
@@ -332,12 +385,12 @@ export default function TodasLasCitas() {
                         onClick={() => abrirModalCobro(cita)}
                         className="flex-1 flex justify-center items-center gap-2 py-4 text-sm font-bold text-[#f171ab] hover:bg-pink-50 transition-colors"
                       >
-                        <CheckCircle size={18} /> Finalizar Cita
+                        <CreditCard size={18} /> Ir a Caja
                       </button>
                     </div>
                   ) : estadoLimpio === 'finalizado' ? (
                      <div className="bg-green-50 py-3 text-center text-green-600 font-bold text-sm border-t border-green-100">
-                       ✅ Cita completada y cobrada
+                       ✅ Operación Finalizada en Caja
                      </div>
                   ) : null}
 
