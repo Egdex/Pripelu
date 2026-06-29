@@ -7,54 +7,75 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [errorMensaje, setErrorMensaje] = useState(''); // <-- Nuevo estado para mostrar errores bonitos
+  const [errorMensaje, setErrorMensaje] = useState(''); 
   
   const navigate = useNavigate();
 
+  // ==========================================
+  // Formateador de Input Controlado (Máscara UX)
+  // ==========================================
+  const formatPhoneNumber = (value) => {
+    // Extracción estricta de caracteres numéricos
+    const digits = value.replace(/\D/g, '');
+    const maxDigits = digits.substring(0, 11);
+
+    // Aplicación de máscara condicional según longitud (+xx x xxxx xxxx)
+    if (maxDigits.length === 0) return '';
+    if (maxDigits.length <= 2) return `+${maxDigits}`;
+    if (maxDigits.length <= 3) return `+${maxDigits.substring(0, 2)} ${maxDigits.substring(2)}`;
+    if (maxDigits.length <= 7) return `+${maxDigits.substring(0, 2)} ${maxDigits.substring(2, 3)} ${maxDigits.substring(3)}`;
+    return `+${maxDigits.substring(0, 2)} ${maxDigits.substring(2, 3)} ${maxDigits.substring(3, 7)} ${maxDigits.substring(7, 11)}`;
+  };
+
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setTelefono(formatted);
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
-    setErrorMensaje(''); // Limpiamos errores anteriores al volver a intentar
+    setErrorMensaje(''); 
 
     // ==========================================
-    // 🛡️ VALIDACIONES DE DATOS
+    // Bloque de validación de integridad de datos
     // ==========================================
 
-    // 1. Campos vacíos
+    // Verificación de presencia de datos obligatorios
     if (!nombre.trim() || !apellido.trim() || !email.trim() || !password.trim() || !telefono.trim()) {
       setErrorMensaje('Por favor, rellena todos los campos obligatorios.');
       return;
     }
 
-    // 2. Nombre y Apellido (solo letras y espacios)
+    // Validación de formato alfabético para nombres (permite caracteres especiales del español)
     const letrasRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
     if (!letrasRegex.test(nombre) || !letrasRegex.test(apellido)) {
-      setErrorMensaje('El nombre y apellido solo deben contener letras.');
+      setErrorMensaje('Error de sintaxis: El nombre y apellido solo deben contener caracteres alfabéticos.');
       return;
     }
 
-    // 3. Email (debe tener @ y un dominio)
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Expresión regular para la verificación estricta del patrón de correo electrónico
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email)) {
-      setErrorMensaje('Ingresa un correo electrónico válido (ejemplo: tu@email.com).');
+      setErrorMensaje('Estructura de correo inválida. Debe contener un carácter "@" seguido de un dominio calificado (ejemplo: usuario@gmail.com).');
       return;
     }
 
-    // 4. Teléfono (Formato chileno: 9 dígitos o con +569)
-    const telefonoLimpio = telefono.replace(/\s/g, ''); // Quitamos espacios si los puso
+    // Normalización y validación de formato telefónico estándar
+    const telefonoLimpio = telefono.replace(/\s/g, ''); // Remueve la máscara visual para la validación lógica
     const telRegex = /^(\+?56)?9\d{8}$/;
     if (!telRegex.test(telefonoLimpio)) {
-      setErrorMensaje('Ingresa un celular válido (ej: +56912345678 o 912345678).');
+      setErrorMensaje('Formato de teléfono inválido. Utilice el estándar local (ej: +56 9 1234 5678).');
       return;
     }
 
-    // 5. Contraseña (mínimo 6 caracteres)
+    // Control de longitud mínima para credenciales de seguridad
     if (password.length < 6) {
-      setErrorMensaje('La contraseña debe tener al menos 6 caracteres por seguridad.');
+      setErrorMensaje('Políticas de seguridad: La contraseña debe contener un mínimo de 6 caracteres.');
       return;
     }
 
     // ==========================================
-    // 🚀 ENVÍO AL BACKEND
+    // Transmisión de payload al servidor
     // ==========================================
     try {
       const respuesta = await fetch('http://localhost:8080/api/usuarios', {
@@ -67,7 +88,7 @@ export default function Register() {
           apellido: apellido.trim(),
           email: email.trim(),
           contrasena: password, 
-          telefono: telefonoLimpio,
+          telefono: telefonoLimpio, // Se envía el dato normalizado al backend
           rol: 'cliente' 
         }),
       });
@@ -77,11 +98,11 @@ export default function Register() {
         navigate('/login'); 
       } else {
         const errorData = await respuesta.json().catch(() => ({}));
-        setErrorMensaje(errorData.message || 'El correo ya está registrado o hubo un error.');
+        setErrorMensaje(errorData.message || 'Conflicto de datos: El correo ya se encuentra registrado.');
       }
     } catch (error) {
-      console.error('Error en el registro:', error);
-      setErrorMensaje('Hubo un problema de red al conectar con el servidor.');
+      console.error('Excepción durante la persistencia del usuario:', error);
+      setErrorMensaje('Error de conexión con el servidor. Verifique el estado del servicio Backend.');
     }
   };
 
@@ -94,6 +115,14 @@ export default function Register() {
         </div>
 
         <form onSubmit={handleRegister} className="flex flex-col gap-4">
+          
+          {/* Contenedor de excepciones y errores de validación */}
+          {errorMensaje && (
+            <div className="bg-red-50 text-red-500 border border-red-200 p-3 rounded-xl text-sm font-bold text-center animate-in fade-in duration-200">
+              ⚠️ {errorMensaje}
+            </div>
+          )}
+
           <div className="flex gap-3">
             <div className="flex flex-col gap-1 w-1/2">
               <label className="text-[#b02a6b] font-bold text-xs ml-2">Nombre</label>
@@ -103,6 +132,7 @@ export default function Register() {
                 onChange={(e) => setNombre(e.target.value)}
                 className="p-3 rounded-xl border border-pink-100 outline-none focus:border-[#f171ab] bg-pink-50/30 text-sm"
                 placeholder="Tu nombre"
+                required
               />
             </div>
             <div className="flex flex-col gap-1 w-1/2">
@@ -113,6 +143,7 @@ export default function Register() {
                 onChange={(e) => setApellido(e.target.value)}
                 className="p-3 rounded-xl border border-pink-100 outline-none focus:border-[#f171ab] bg-pink-50/30 text-sm"
                 placeholder="Tu apellido"
+                required
               />
             </div>
           </div>
@@ -120,11 +151,12 @@ export default function Register() {
           <div className="flex flex-col gap-1">
             <label className="text-[#b02a6b] font-bold text-sm ml-2">Email</label>
             <input 
-              type="email" 
+              type="text" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="p-3 rounded-xl border border-pink-100 outline-none focus:border-[#f171ab] bg-pink-50/30"
               placeholder="tu@email.com"
+              required
             />
           </div>
 
@@ -133,9 +165,11 @@ export default function Register() {
             <input 
               type="tel" 
               value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
+              onChange={handlePhoneChange} // Inyección del interceptor de formato
               className="p-3 rounded-xl border border-pink-100 outline-none focus:border-[#f171ab] bg-pink-50/30"
-              placeholder="+56912345678"
+              placeholder="+56 9 1234 5678"
+              maxLength={15} // Límite estricto de caracteres para la máscara
+              required
             />
           </div>
 
@@ -147,15 +181,9 @@ export default function Register() {
               onChange={(e) => setPassword(e.target.value)}
               className="p-3 rounded-xl border border-pink-100 outline-none focus:border-[#f171ab] bg-pink-50/30"
               placeholder="••••••••"
+              required
             />
           </div>
-
-          {/* MENSAJE DE ERROR EN PANTALLA */}
-          {errorMensaje && (
-            <p className="text-red-500 text-xs text-center font-bold px-2">
-              {errorMensaje}
-            </p>
-          )}
 
           <button 
             type="submit"

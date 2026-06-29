@@ -4,11 +4,31 @@ import { useNavigate } from 'react-router-dom';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     localStorage.clear();
+    setErrorMsg(''); 
+
+    // Limpieza de espacios invisibles por autocompletado
+    const correoLimpio = email.trim();
+
+    // Validación de presencia de datos en los campos del formulario
+    if (!correoLimpio || !password.trim()) {
+      setErrorMsg('Por favor, completa todos los campos.');
+      return;
+    }
+
+    // Expresión regular para la verificación estricta del patrón de correo electrónico
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    
+    // Disparador de alerta visual en caso de detectar una sintaxis de correo incorrecta
+    if (!emailRegex.test(correoLimpio)) {
+      setErrorMsg('Estructura de correo inválida. Debe contener un carácter "@" seguido de un dominio calificado (ejemplo: usuario@gmail.com).');
+      return;
+    }
 
     try {
       const respuesta = await fetch('http://localhost:8080/api/usuarios/login', {
@@ -17,19 +37,21 @@ export default function Login() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          email: email,
+          email: correoLimpio,
           contrasena: password
         })
       });
 
       if (respuesta.ok) {
         const usuarioLogeado = await respuesta.json();
-        // Guardamos los datos en la memoria del navegador
+        
+        // Persistencia de sesión y meta-datos del usuario en el almacenamiento local
         localStorage.setItem('isAuthenticated', 'true');
         localStorage.setItem('userRole', usuarioLogeado.rol?.toLowerCase() || 'cliente');
         localStorage.setItem('userName', usuarioLogeado.nombre || 'Usuario');
         localStorage.setItem('userId', usuarioLogeado.id_usuario || usuarioLogeado.id);
 
+        // Enrutamiento condicional basado en el rol del usuario autenticado
         if (usuarioLogeado.rol?.toLowerCase() === 'admin') {
           navigate('/admin');
         } else if (usuarioLogeado.rol?.toLowerCase() === 'empleado') {
@@ -38,11 +60,11 @@ export default function Login() {
           navigate('/');
         }
       } else {
-        alert('Correo o contraseña incorrectos');
+        setErrorMsg('Credenciales incorrectas. Verifique el correo y la contraseña.');
       }
     } catch (error) {
       console.error("Falla en la conexión:", error);
-      alert('Error de conexión con el servidor. ¿Está encendido el Backend?');
+      setErrorMsg('Error de conexión con el servidor. Verifique el estado del Backend.');
     }
   };
 
@@ -55,10 +77,18 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleLogin} className="flex flex-col gap-5">
+          
+          {/* Contenedor de excepciones y errores de validación */}
+          {errorMsg && (
+            <div className="bg-red-50 text-red-500 border border-red-200 p-3 rounded-xl text-sm font-bold text-center animate-in fade-in duration-200">
+              ⚠️ {errorMsg}
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
             <label className="text-[#b02a6b] font-bold text-sm ml-2">Email</label>
             <input 
-              type="email" 
+              type="text" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="p-4 rounded-2xl border border-pink-100 outline-none focus:border-[#f171ab] bg-pink-50/30"
@@ -83,6 +113,7 @@ export default function Login() {
           >
             Entrar al Panel
           </button>
+          
           <p className="text-center mt-6 text-gray-500 text-sm">
             ¿No tienes cuenta? <a href="/register" className="text-[#f171ab] font-bold">Regístrate aquí</a>
           </p>

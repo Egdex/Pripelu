@@ -11,13 +11,12 @@ export default function MisCitas() {
   const userName = localStorage.getItem('userName') || 'Usuario';
   const userId = parseInt(localStorage.getItem('userId')) || 0;
 
-  // Estados para la gestión del modal de pagos y finalización
+  // Estados de control para el sub-módulo transaccional de caja y bodega
   const [modalAbierto, setModalAbierto] = useState(false);
   const [citaSeleccionada, setCitaSeleccionada] = useState(null);
   const [insumosAGastar, setInsumosAGastar] = useState([]);
   const [pasoPago, setPasoPago] = useState('resumen'); 
 
-  // Carga inicial de citas y cálculo de comisiones según rol
   useEffect(() => {
     const obtenerCitas = async () => {
       try {
@@ -55,15 +54,15 @@ export default function MisCitas() {
     obtenerCitas();
   }, [userRole, userId, userName]);
 
-  // Actualiza el estado de una cita en la base de datos (Ej: Cancelar)
   const actualizarEstado = async (id, nuevoEstado, notaExtra = null) => {
-    const citaActual = misCitas.find(c => c.id === id);
+    const citaActual = misCitas.find(c => c.id === id || c.id_cita === id);
     if (!citaActual) return;
 
-    const notasFinales = notaExtra ? `${citaActual.notas || ''} | Insumo: ${notaExtra}` : citaActual.notas;
+    const idReal = citaActual.id || citaActual.id_cita;
+    const notasFinales = notaExtra ? `${citaActual.notes || ''} | Insumo: ${notaExtra}` : citaActual.notas;
 
     const citaLimpia = {
-      id: citaActual.id,
+      id: idReal,
       fechaHora: citaActual.fechaHora,
       estado: nuevoEstado, 
       notas: notasFinales,
@@ -79,14 +78,14 @@ export default function MisCitas() {
     };
 
     try {
-      const respuesta = await fetch(`http://localhost:8080/api/citas/${id}`, {
+      const respuesta = await fetch(`http://localhost:8080/api/citas/${idReal}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(citaLimpia)
       });
 
       if (respuesta.ok) {
-        setMisCitas(misCitas.map(c => c.id === id ? { ...c, estado: nuevoEstado, notas: notasFinales } : c));
+        setMisCitas(misCitas.map(c => (c.id === idReal || c.id_cita === idReal) ? { ...c, estado: nuevoEstado, notas: notasFinales } : c));
       } else {
         alert("Hubo un error al actualizar la reserva en el servidor.");
       }
@@ -95,7 +94,6 @@ export default function MisCitas() {
     }
   };
 
-  // Prepara el modal de cobro y obtiene la lista de insumos a descontar
   const abrirModalCobro = async (cita) => {
     setCitaSeleccionada(cita);
     setPasoPago('resumen'); 
@@ -105,7 +103,6 @@ export default function MisCitas() {
     let insumosDeLaCita = cita.detalles?.[0]?.servicio?.insumosRequeridos;
     const idServicio = cita.detalles?.[0]?.servicio?.id || cita.detalles?.[0]?.servicio?.id_servicio;
 
-    // Búsqueda de insumos requeridos si no vienen anidados en el payload original
     if (!insumosDeLaCita && idServicio) {
       try {
         const resServicios = await fetch('http://localhost:8080/api/servicios');
@@ -127,7 +124,6 @@ export default function MisCitas() {
     }
   };
 
-  // Simula la conexión con la pasarela de pagos (POS)
   const iniciarPagoSimulado = () => {
     setPasoPago('procesando'); 
     setTimeout(() => {
@@ -135,14 +131,11 @@ export default function MisCitas() {
     }, 2500);
   };
 
-  // Procesa el pago final, descuenta inventario y actualiza comisiones
   const confirmarCobroYFinalizar = async () => {
     if (!citaSeleccionada) return;
-
     const idCita = citaSeleccionada.id || citaSeleccionada.id_cita;
 
     try {
-      // 1. Descuento de insumos en bodega
       for (const item of insumosAGastar) {
         const idInsumo = item.idInsumoReal;
         const cantidadRestar = item.cantidad;
@@ -167,11 +160,9 @@ export default function MisCitas() {
         }
       }
 
-      // 2. Actualización del estado de la cita
       const idUsuario = citaSeleccionada.usuario?.id || citaSeleccionada.usuario?.id_usuario;
       const idEmpleado = citaSeleccionada.empleado?.id || citaSeleccionada.empleado?.id_empleado;
 
-      // Generación del payload completo para validación estricta de Spring Boot
       const paqueteLimpio = {
         id: idCita,
         fechaHora: citaSeleccionada.fechaHora,
@@ -195,10 +186,9 @@ export default function MisCitas() {
       });
 
       if (respuestaCita.ok) {
-        const nuevasCitas = misCitas.map(c => c.id === idCita ? { ...c, estado: 'Finalizado' } : c);
+        const nuevasCitas = misCitas.map(c => (c.id === idCita || c.id_cita === idCita) ? { ...c, estado: 'Finalizado' } : c);
         setMisCitas(nuevasCitas);
         
-        // 3. Recálculo local de comisiones para reflejar el pago al instante
         const nuevoTotalComisiones = nuevasCitas
           .filter(c => c.estado?.toLowerCase() === 'finalizado')
           .reduce((acc, c) => acc + ((c.valorTotal || 0) * 0.5), 0);
@@ -206,12 +196,10 @@ export default function MisCitas() {
 
         setPasoPago('exito');
 
-        // Cierra el modal tras confirmación visual
         setTimeout(() => {
           setModalAbierto(false);
           setCitaSeleccionada(null);
         }, 2000);
-
       } else {
         alert("Hubo un error al actualizar el estado de la cita.");
         setPasoPago('resumen');
@@ -227,6 +215,83 @@ export default function MisCitas() {
     return cita.detalles?.[0]?.servicio?.nombre || "Servicio no especificado";
   };
 
+  // ==========================================
+  // Segmentación Cronológica Condicional (Filtro Diario)
+  // ==========================================
+  const hoy = new Date();
+
+  const misCitasHoy = misCitas.filter(cita => {
+    const fechaCita = new Date(cita.fechaHora);
+    return (
+      fechaCita.getDate() === hoy.getDate() &&
+      fechaCita.getMonth() === hoy.getMonth() &&
+      fechaCita.getFullYear() === hoy.getFullYear()
+    );
+  });
+
+  const misCitasOtras = misCitas.filter(cita => {
+    const fechaCita = new Date(cita.fechaHora);
+    return (
+      fechaCita.getDate() !== hoy.getDate() ||
+      fechaCita.getMonth() !== hoy.getMonth() ||
+      fechaCita.getFullYear() !== hoy.getFullYear()
+    );
+  });
+
+  // Renderizador unificado para filas de citas en listas segmentadas
+  const renderFilaCita = (cita) => {
+    const estadoLimpio = cita.estado?.trim().toLowerCase() || '';
+    const idActual = cita.id || cita.id_cita;
+    const mostrarBotones = estadoLimpio === 'pendiente' || estadoLimpio.includes('confirmad');
+
+    return (
+      <div key={idActual} className={`bg-white p-6 rounded-[2rem] shadow-md border-l-8 flex flex-col md:flex-row justify-between md:items-center gap-4 transition-all ${estadoLimpio === 'finalizado' ? 'border-green-400 opacity-75' : estadoLimpio === 'cancelado' ? 'border-red-400 opacity-50' : 'border-[#f171ab]'}`}>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-gray-500 bg-gray-50 inline-block px-3 py-1 rounded-lg">
+            <Calendar size={16} className="text-[#f171ab]" />
+            <span className="text-sm font-bold">
+              {new Date(cita.fechaHora).toLocaleDateString('es-CL')} - {new Date(cita.fechaHora).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          </div>
+          
+          <div>
+            <p className="text-[10px] text-gray-400 uppercase font-bold">
+              {userRole === 'empleado' ? 'Atender a:' : 'Estilista asignado:'}
+            </p>
+            <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              {userRole === 'empleado' 
+                ? <><User size={18} className="text-[#f171ab]"/> {cita.usuario?.nombre} {cita.usuario?.apellido}</>
+                : <><Scissors size={18} className="text-[#f171ab]"/> {cita.empleado?.nombre} {cita.empleado?.apellido}</>
+              }
+            </h3>
+          </div>
+
+          <p className="text-[#b02a6b] font-bold italic">{obtenerNombreServicio(cita)}</p>
+          
+          <div className="flex gap-2">
+            <span className={`text-xs font-bold px-3 py-1 rounded-full ${estadoLimpio === 'pendiente' ? 'bg-amber-100 text-amber-700' : estadoLimpio === 'finalizado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              {cita.estado}
+            </span>
+          </div>
+        </div>
+
+        {mostrarBotones && (
+          <div className="flex shrink-0">
+            {userRole === 'empleado' ? (
+              <button onClick={() => abrirModalCobro(cita)} className="bg-green-500 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-green-600 transition-all shadow-lg w-full md:w-auto justify-center">
+                <CreditCard size={20} /> Cobrar y Finalizar
+              </button>
+            ) : (
+              <button onClick={() => actualizarEstado(idActual, 'Cancelado')} className="bg-red-50 text-red-500 border border-red-200 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-red-100 transition-all w-full md:w-auto justify-center">
+                <XCircle size={20} /> Cancelar Reserva
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#fdf2f8] p-4 md:p-8 relative">
       
@@ -235,7 +300,6 @@ export default function MisCitas() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-lg overflow-hidden border border-pink-100 animate-in zoom-in duration-200">
             
-            {/* Cabecera dinámica según estado del pago */}
             <div className={`${pasoPago === 'exito' ? 'bg-green-500' : 'bg-[#f171ab]'} p-6 text-white text-center relative transition-colors duration-500`}>
               {pasoPago === 'resumen' && (
                 <button onClick={() => setModalAbierto(false)} className="absolute top-6 right-6 font-bold hover:scale-110 transition-transform text-xl">✕</button>
@@ -245,10 +309,7 @@ export default function MisCitas() {
               </h2>
             </div>
 
-            {/* Contenedor principal del modal */}
             <div className="p-8">
-              
-              {/* Vista de resumen y detalle de cobro */}
               {pasoPago === 'resumen' && (
                 <div className="space-y-6 animate-in fade-in">
                   <div className="bg-pink-50 p-5 rounded-2xl border border-pink-100">
@@ -293,7 +354,6 @@ export default function MisCitas() {
                 </div>
               )}
 
-              {/* Vista de procesamiento de pago */}
               {pasoPago === 'procesando' && (
                 <div className="py-12 flex flex-col items-center justify-center space-y-6 animate-in fade-in">
                   <Loader2 size={64} className="text-[#f171ab] animate-spin" />
@@ -304,7 +364,6 @@ export default function MisCitas() {
                 </div>
               )}
 
-              {/* Vista de transacción exitosa */}
               {pasoPago === 'exito' && (
                 <div className="py-12 flex flex-col items-center justify-center space-y-6 animate-in zoom-in">
                   <div className="bg-green-100 p-6 rounded-full text-green-500">
@@ -322,7 +381,6 @@ export default function MisCitas() {
         </div>
       )}
 
-      {/* Renderizado del panel de control general */}
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <Link to="/" className="text-[#f171ab] flex items-center gap-2 hover:underline font-bold">
@@ -353,61 +411,40 @@ export default function MisCitas() {
              </p>
            </div>
         ) : (
-          <div className="grid gap-6">
-            {misCitas.map(cita => {
-              const estadoLimpio = cita.estado?.trim().toLowerCase() || '';
-              // Corrección: El botón aparecerá si está pendiente o confirmada
-              const mostrarBotones = estadoLimpio === 'pendiente' || estadoLimpio.includes('confirmad');
-
-              return (
-                <div key={cita.id} className={`bg-white p-6 rounded-[2rem] shadow-md border-l-8 flex flex-col md:flex-row justify-between md:items-center gap-4 ${estadoLimpio === 'finalizado' ? 'border-green-400 opacity-75' : estadoLimpio === 'cancelado' ? 'border-red-400 opacity-50' : 'border-[#f171ab]'}`}>
-                  
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-gray-500 bg-gray-50 inline-block px-3 py-1 rounded-lg">
-                      <Calendar size={16} className="text-[#f171ab]" />
-                      <span className="text-sm font-bold">
-                        {new Date(cita.fechaHora).toLocaleDateString('es-CL')} - {new Date(cita.fechaHora).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    
-                    <div>
-                      <p className="text-[10px] text-gray-400 uppercase font-bold">
-                        {userRole === 'empleado' ? 'Atender a:' : 'Estilista asignado:'}
-                      </p>
-                      <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        {userRole === 'empleado' 
-                          ? <><User size={18} className="text-[#f171ab]"/> {cita.usuario?.nombre} {cita.usuario?.apellido}</>
-                          : <><Scissors size={18} className="text-[#f171ab]"/> {cita.empleado?.nombre} {cita.empleado?.apellido}</>
-                        }
-                      </h3>
-                    </div>
-
-                    <p className="text-[#b02a6b] font-bold italic">{obtenerNombreServicio(cita)}</p>
-                    
-                    <div className="flex gap-2">
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full ${estadoLimpio === 'pendiente' ? 'bg-amber-100 text-amber-700' : estadoLimpio === 'finalizado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                        {cita.estado}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Acciones por rol (Usando mostrarBotones para que no se oculte en "Confirmada") */}
-                  {mostrarBotones && (
-                    <div className="flex shrink-0">
-                      {userRole === 'empleado' ? (
-                        <button onClick={() => abrirModalCobro(cita)} className="bg-green-500 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-green-600 transition-all shadow-lg w-full md:w-auto justify-center">
-                          <CreditCard size={20} /> Cobrar y Finalizar
-                        </button>
-                      ) : (
-                        <button onClick={() => actualizarEstado(cita.id, 'Cancelado')} className="bg-red-50 text-red-500 border border-red-200 px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-red-100 transition-all w-full md:w-auto justify-center">
-                          <XCircle size={20} /> Cancelar Reserva
-                        </button>
-                      )}
-                    </div>
-                  )}
+          <div className="space-y-10">
+            
+            {/* SECCIÓN A: COMPROMISOS CRONOLÓGICOS DEL DÍA ACTUAL */}
+            <div className="space-y-4">
+              <h2 className="text-md font-bold text-[#b02a6b] uppercase tracking-widest flex items-center gap-2">
+                📅 Compromisos para Hoy ({misCitasHoy.length})
+              </h2>
+              {misCitasHoy.length === 0 ? (
+                <div className="bg-white/60 rounded-[2rem] p-6 text-center text-gray-400 font-medium border border-pink-100/50 border-dashed">
+                  {userRole === 'empleado' ? 'No registras servicios asignados para el día de hoy.' : 'No tienes reservas agendadas para hoy.'}
                 </div>
-              );
-            })}
+              ) : (
+                <div className="grid gap-4">
+                  {misCitasHoy.map(renderFilaCita)}
+                </div>
+              )}
+            </div>
+
+            {/* SECCIÓN B: HISTORIAL COMPLETO / FECHAS DIFERIDAS */}
+            <div className="space-y-4">
+              <h2 className="text-md font-bold text-gray-400 uppercase tracking-widest">
+                📚 Otras Fechas y Registros ({misCitasOtras.length})
+              </h2>
+              {misCitasOtras.length === 0 ? (
+                <div className="bg-white/60 rounded-[2rem] p-6 text-center text-gray-400 font-medium border border-pink-100/50 border-dashed">
+                  No se registran transacciones previas o futuras en el sistema.
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {misCitasOtras.map(renderFilaCita)}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
       </div>
