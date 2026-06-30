@@ -12,7 +12,8 @@ export default function MiCuenta() {
 
   // 1. LECTURA (GET) - CP-02
   useEffect(() => {
-    fetch(`http://localhost:8080/api/usuarios/${userId}`)
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    fetch(`${baseUrl}/api/usuarios/${userId}`)
       .then(res => res.json())
       .then(data => { setPerfil(data); setCargando(false); })
       .catch(err => { console.error(err); setCargando(false); });
@@ -27,7 +28,8 @@ export default function MiCuenta() {
     e.preventDefault();
     setGuardando(true);
     try {
-      const res = await fetch(`http://localhost:8080/api/usuarios/${userId}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const res = await fetch(`${baseUrl}/api/usuarios/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(perfil)

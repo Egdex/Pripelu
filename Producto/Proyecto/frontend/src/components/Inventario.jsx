@@ -9,8 +9,9 @@ export default function Inventario() {
   useEffect(() => {
     const fetchInventario = async () => {
       try {
-        // Hacemos la petición al endpoint del Eugenio
-        const res = await fetch('http://localhost:8080/api/inventarios');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+      const res = await fetch(`${baseUrl}/api/inventarios`);
         if (res.ok) {
           const data = await res.json();
           setInsumos(data);

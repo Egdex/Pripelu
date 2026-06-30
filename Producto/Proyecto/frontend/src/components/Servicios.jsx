@@ -7,7 +7,9 @@ export default function Servicios() {
   useEffect(() => {
     const obtenerServicios = async () => {
       try {
-        const respuesta = await fetch('http://localhost:8080/api/servicios');
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
+      const res = await fetch(`${baseUrl}/api/servicios`);
         
         if (respuesta.ok) {
           const datos = await respuesta.json();

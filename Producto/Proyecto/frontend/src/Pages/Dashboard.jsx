@@ -9,9 +9,11 @@ export default function Dashboard() {
 
 useEffect(() => {
     const obtenerDatosGlobales = async () => {
+      
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
       // 1. Cargamos las Citas
       try {
-        const resCitas = await fetch('http://localhost:8080/api/citas');
+        const resCitas = await fetch(`${baseUrl}/api/citas`);
         if (resCitas.ok) {
           const citasBackend = await resCitas.json();
           setCitas(citasBackend);
@@ -22,7 +24,7 @@ useEffect(() => {
 
       // 2. Cargamos el Inventario
       try {
-        const resInventario = await fetch('http://localhost:8080/api/inventarios');
+        const resInventario = await fetch(`${baseUrl}/api/inventarios`);
         if (resInventario.ok) {
           const inventarioBackend = await resInventario.json();
           setInventario(inventarioBackend);

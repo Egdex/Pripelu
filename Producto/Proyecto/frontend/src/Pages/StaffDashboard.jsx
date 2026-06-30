@@ -20,7 +20,8 @@ export default function MisCitas() {
   useEffect(() => {
     const obtenerCitas = async () => {
       try {
-        const respuesta = await fetch('http://localhost:8080/api/citas');
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+        const respuesta = await fetch(`${baseUrl}/api/citas`);
         
         if (respuesta.ok) {
           const citasBackend = await respuesta.json();
@@ -78,7 +79,8 @@ export default function MisCitas() {
     };
 
     try {
-      const respuesta = await fetch(`http://localhost:8080/api/citas/${idReal}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const respuesta = await fetch(`${baseUrl}/api/citas/${idReal}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(citaLimpia)
@@ -105,7 +107,8 @@ export default function MisCitas() {
 
     if (!insumosDeLaCita && idServicio) {
       try {
-        const resServicios = await fetch('http://localhost:8080/api/servicios');
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+        const resServicios = await fetch(`${baseUrl}/api/servicios`);
         const catalogo = await resServicios.json();
         const servicioReal = catalogo.find(s => parseInt(s.id || s.id_servicio) === parseInt(idServicio));
         insumosDeLaCita = servicioReal?.insumosRequeridos || [];
@@ -141,13 +144,14 @@ export default function MisCitas() {
         const cantidadRestar = item.cantidad;
 
         if (idInsumo) {
-          const resStock = await fetch(`http://localhost:8080/api/inventarios/${idInsumo}`);
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+          const resStock = await fetch(`${baseUrl}/api/inventarios/${idInsumo}`);
           if (resStock.ok) {
             const productoActual = await resStock.json();
             const stockViejo = productoActual.stockActual || productoActual.stock_actual;
             const stockNuevo = Math.max(0, stockViejo - cantidadRestar);
 
-            await fetch(`http://localhost:8080/api/inventarios/${idInsumo}`, {
+            await fetch(`${baseUrl}/api/inventarios/${idInsumo}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -179,7 +183,8 @@ export default function MisCitas() {
         }))
       };
 
-      const respuestaCita = await fetch(`http://localhost:8080/api/citas/${idCita}`, {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const respuestaCita = await fetch(`${baseUrl}/api/citas/${idCita}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paqueteLimpio)

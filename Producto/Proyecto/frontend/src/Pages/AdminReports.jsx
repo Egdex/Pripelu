@@ -18,9 +18,11 @@ export default function AdminReports() {
 
     const obtenerDatosGlobales = async () => {
       try {
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
         const [resCitas, resPagos] = await Promise.all([
-          fetch('http://localhost:8080/api/citas'),
-          fetch('http://localhost:8080/api/pagos') 
+          fetch(`${baseUrl}/api/citas`),
+          fetch(`${baseUrl}/api/pagos`)
         ]);
 
         if (resCitas.ok) {

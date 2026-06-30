@@ -12,10 +12,12 @@ export default function TodasLasCitas() {
   const [insumosAGastar, setInsumosAGastar] = useState([]);
   const [pasoPago, setPasoPago] = useState('resumen'); 
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
   useEffect(() => {
     const fetchCitas = async () => {
       try {
-        const res = await fetch('http://localhost:8080/api/citas');
+        const res = await fetch(`${baseUrl}/api/citas`);
         if (res.ok) {
           const data = await res.json();
           setCitas(data);
@@ -37,7 +39,7 @@ export default function TodasLasCitas() {
       if (citas.length === 0) return alert("La base de datos ya está vacía.");
       for (const cita of citas) {
         const idCita = cita.id || cita.id_cita;
-        await fetch(`http://localhost:8080/api/citas/${idCita}`, { method: 'DELETE' });
+        await fetch(`${baseUrl}/api/citas/${idCita}`, { method: 'DELETE' });
       }
       alert("¡Base de datos limpia exitosamente! 🚀");
       window.location.reload(); 
@@ -57,7 +59,7 @@ export default function TodasLasCitas() {
 
     if (!insumosDeLaCita && idServicio) {
       try {
-        const resServicios = await fetch('http://localhost:8080/api/servicios');
+        const resServicios = await fetch(`${baseUrl}/api/servicios`);
         const catalogo = await resServicios.json();
         const servicioReal = catalogo.find(s => parseInt(s.id || s.id_servicio) === parseInt(idServicio));
         insumosDeLaCita = servicioReal?.insumosRequeridos || [];
@@ -94,13 +96,13 @@ export default function TodasLasCitas() {
         const cantidadRestar = item.amount;
 
         if (idInsumo) {
-          const resStock = await fetch(`http://localhost:8080/api/inventarios/${idInsumo}`);
+          const resStock = await fetch(`${baseUrl}/api/inventarios/${idInsumo}`);
           if (resStock.ok) {
             const productoActual = await resStock.json();
             const stockViejo = productoActual.stockActual || productoActual.stock_actual;
             const stockNuevo = Math.max(0, stockViejo - cantidadRestar);
 
-            await fetch(`http://localhost:8080/api/inventarios/${idInsumo}`, {
+            await fetch(`${baseUrl}/api/inventarios/${idInsumo}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -124,7 +126,7 @@ export default function TodasLasCitas() {
         empleado: idEmpleado ? { id: parseInt(idEmpleado) } : null
       };
 
-      const respuestaCita = await fetch(`http://localhost:8080/api/citas/${idCita}`, {
+      const respuestaCita = await fetch(`${baseUrl}/api/citas/${idCita}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paqueteLimpio)
@@ -157,7 +159,7 @@ export default function TodasLasCitas() {
     const idEmpleado = citaActual.empleado?.id || citaActual.empleado?.id_empleado;
 
     try {
-      const respuesta = await fetch(`http://localhost:8080/api/citas/${id}`, {
+      const respuesta = await fetch(`${baseUrl}/api/citas/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

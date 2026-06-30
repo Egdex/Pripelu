@@ -27,6 +27,8 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     cvv: ''
   });
 
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+
   // --- CALCULAR FECHA MÍNIMA (HOY) ---
   const fechaActual = new Date();
   const anio = fechaActual.getFullYear();
@@ -39,10 +41,10 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     const cargarDatos = async () => {
       try {
         const [resServ, resEmp, resHorarios, resCitas] = await Promise.all([
-          fetch('http://localhost:8080/api/servicios'),
-          fetch('http://localhost:8080/api/empleado'),
-          fetch('http://localhost:8080/api/horarios'),
-          fetch('http://localhost:8080/api/citas')
+          fetch(`${baseUrl}/api/servicios`),
+          fetch(`${baseUrl}/api/empleado`),
+          fetch(`${baseUrl}/api/horarios`),
+          fetch(`${baseUrl}/api/citas`)
         ]);
 
         if (resServ.ok) setServicios(await resServ.json());
@@ -236,7 +238,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
     try {
       await new Promise(resolve => setTimeout(resolve, 3000));
       
-      const respuestaCita = await fetch('http://localhost:8080/api/citas', {
+      const respuestaCita = await fetch(`${baseUrl}/api/citas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevaReserva)
@@ -257,7 +259,7 @@ export default function BookingForm({ onBookingComplete, onClose }) {
         tipoPago: "Abono"              
       };
 
-      const respuestaPago = await fetch('http://localhost:8080/api/pagos', {
+      const respuestaPago = await fetch(`${baseUrl}/api/pagos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevoPago)

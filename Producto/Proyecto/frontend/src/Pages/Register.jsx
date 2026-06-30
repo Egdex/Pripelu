@@ -78,7 +78,8 @@ export default function Register() {
     // Transmisión de payload al servidor
     // ==========================================
     try {
-      const respuesta = await fetch('http://localhost:8080/api/usuarios', {
+      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const respuesta = await fetch(`${baseUrl}/api/usuarios`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

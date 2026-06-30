@@ -46,10 +46,12 @@ export default function LandingPage({ onStartBooking }) {
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        const resServ = await fetch('http://localhost:8080/api/servicios');
-        if (resServ.ok) setServicios(await resServ.servicios || await resServ.json());
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
-        const resEmp = await fetch('http://localhost:8080/api/empleado'); 
+        const resServ = await fetch(`${baseUrl}/api/servicios`);
+        if (resServ.ok) setServicios(await resServ.json());
+
+        const resEmp = await fetch(`${baseUrl}/api/empleado`); 
         if (resEmp.ok) {
           const dataEmp = await resEmp.json();
           setEmpleados(Array.isArray(dataEmp) ? dataEmp : []);

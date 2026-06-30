@@ -10,7 +10,8 @@ export default function GestionEmpleados() {
 
   // 1. Cargar Empleados
   useEffect(() => {
-    fetch('http://localhost:8080/api/empleado')
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    fetch(`${baseUrl}/api/empleado`)
       .then(res => res.json())
       .then(data => { setEmpleados(data); setCargando(false); })
       .catch(() => setCargando(false));
@@ -29,7 +30,7 @@ export default function GestionEmpleados() {
         horarios: [] // Lo mandamos vacío por ahora, se llena en el módulo de abajo
       };
 
-      const res = await fetch('http://localhost:8080/api/empleado', {
+      const res = await fetch(`${baseUrl}/api/empleado`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -54,7 +55,7 @@ export default function GestionEmpleados() {
   const handleEliminarEmpleado = async (id) => {
     if (!window.confirm("¿Seguro que deseas eliminar a este trabajador?")) return;
     try {
-      const res = await fetch(`http://localhost:8080/api/empleado/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${baseUrl}/api/empleado/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setEmpleados(empleados.filter(emp => (emp.id || emp.id_empleado) !== id));
       }
@@ -67,7 +68,7 @@ export default function GestionEmpleados() {
   const handleAsignarHorario = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:8080/api/horarios', {
+      const res = await fetch(`${baseUrl}/api/horarios`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
